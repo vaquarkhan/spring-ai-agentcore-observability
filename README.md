@@ -4,9 +4,9 @@ Sample Spring Boot application demonstrating **OpenTelemetry** integration for [
 
 ## Features
 
-- **GenAI telemetry** — Spans and metrics aligned with OpenTelemetry GenAI conventions (`gen_ai.*` attributes, token usage histograms).
-- **PII-safe export** — `PiiMaskingSpanExporter` wraps the configured OTLP span exporter and masks common patterns (email, phone, SSN, PAN) on attributes and GenAI content events.
-- **Spring Boot auto-configuration** — Registers the exporter wrapper and an aspect around AgentCore HTTP entry points via `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`.
+- **GenAI telemetry** - Spans and metrics aligned with OpenTelemetry GenAI conventions (`gen_ai.*` attributes, token usage histograms).
+- **PII-safe export** - `PiiMaskingSpanExporter` wraps the configured OTLP span exporter and masks common patterns (email, phone, SSN, PAN) on attributes and GenAI content events.
+- **Spring Boot auto-configuration** - Registers the exporter wrapper and an aspect around AgentCore HTTP entry points via `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`.
 
 ## Requirements
 
@@ -43,8 +43,8 @@ This repository follows the standard Maven / Spring Boot layout:
 
 Main packages:
 
-- `org.springaicommunity.agentcore.observability` — core observability components
-- `org.springaicommunity.agentcore.observability.sample` — sample agent service for demos and tests
+- `org.springaicommunity.agentcore.observability` - core observability components
+- `org.springaicommunity.agentcore.observability.sample` - sample agent service for demos and tests
 
 ## Documentation
 
@@ -52,4 +52,4 @@ Additional curated notes live under [`doc/`](doc/README.md) (OpenTelemetry, Spri
 
 ## License
 
-Apache License 2.0 — see [`LICENSE`](LICENSE).
+Apache License 2.0 - see [`LICENSE`](LICENSE).

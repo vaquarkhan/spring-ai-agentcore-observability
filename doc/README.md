@@ -9,4 +9,5 @@ Authoritative content remains on [Spring](https://spring.io/) and [OpenTelemetry
 | [spring-boot-and-otel.md](spring-boot-and-otel.md) | Spring Boot + OpenTelemetry starter, programmatic SDK customization |
 | [spring-ai-reference.md](spring-ai-reference.md) | Spring AI (models, `ChatResponse`, Bedrock) pointers |
 | [agentcore-runtime.md](agentcore-runtime.md) | AWS Bedrock AgentCore + `spring-ai-bedrock-agentcore-starter` |
-| [genai-observability.md](genai-observability.md) | GenAI semantic conventions and this module’s behavior |
+| [genai-observability.md](genai-observability.md) | GenAI semantic conventions and this module's behavior |
+| [bedrock-testing-tutorial.md](bedrock-testing-tutorial.md) | Validate locally vs. optional real Amazon Bedrock + observability checks |
