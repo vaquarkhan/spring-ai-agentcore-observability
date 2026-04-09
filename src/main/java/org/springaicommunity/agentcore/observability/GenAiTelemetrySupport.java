@@ -1,0 +1,62 @@
+/*
+ * Copyright 2026 Vaquar Khan
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.springaicommunity.agentcore.observability;
+
+import io.opentelemetry.api.common.AttributeKey;
+
+/**
+ * Stable GenAI-related attribute keys aligned with OpenTelemetry semantic conventions for generative AI.
+ * See: <a href="https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-spans/">GenAI spans</a>.
+ */
+public final class GenAiTelemetrySupport {
+
+  public static final String PROVIDER_AWS_BEDROCK = "aws.bedrock";
+
+  public static final AttributeKey<String> GEN_AI_OPERATION_NAME =
+      AttributeKey.stringKey("gen_ai.operation.name");
+  public static final AttributeKey<String> GEN_AI_PROVIDER_NAME =
+      AttributeKey.stringKey("gen_ai.provider.name");
+  public static final AttributeKey<String> GEN_AI_SYSTEM = AttributeKey.stringKey("gen_ai.system");
+  public static final AttributeKey<String> GEN_AI_REQUEST_MODEL =
+      AttributeKey.stringKey("gen_ai.request.model");
+  public static final AttributeKey<String> GEN_AI_RESPONSE_MODEL =
+      AttributeKey.stringKey("gen_ai.response.model");
+  public static final AttributeKey<Long> GEN_AI_USAGE_INPUT_TOKENS =
+      AttributeKey.longKey("gen_ai.usage.input_tokens");
+  public static final AttributeKey<Long> GEN_AI_USAGE_OUTPUT_TOKENS =
+      AttributeKey.longKey("gen_ai.usage.output_tokens");
+  public static final AttributeKey<String> GEN_AI_RESPONSE_FINISH_REASONS =
+      AttributeKey.stringKey("gen_ai.response.finish_reasons");
+  public static final AttributeKey<String> ERROR_TYPE = AttributeKey.stringKey("error.type");
+
+  /** Histogram metric name from GenAI client metrics semantic conventions. */
+  public static final String METRIC_GEN_AI_CLIENT_TOKEN_USAGE = "gen_ai.client.token.usage";
+
+  public static final AttributeKey<String> GEN_AI_TOKEN_TYPE = AttributeKey.stringKey("gen_ai.token.type");
+
+  /** Span events for optional prompt/completion capture (opt-in). */
+  public static final String EVENT_GEN_AI_CONTENT_PROMPT = "gen_ai.content.prompt";
+  public static final String EVENT_GEN_AI_CONTENT_COMPLETION = "gen_ai.content.completion";
+
+  public static final AttributeKey<String> GEN_AI_PROMPT = AttributeKey.stringKey("gen_ai.prompt");
+  public static final AttributeKey<String> GEN_AI_COMPLETION = AttributeKey.stringKey("gen_ai.completion");
+
+  public static final String OP_CHAT = "chat";
+  public static final String OP_EXECUTE_TOOL = "execute_tool";
+
+  private GenAiTelemetrySupport() {}
+}
