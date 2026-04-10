@@ -54,3 +54,5 @@ Additional curated notes live under [`doc/`](doc/README.md) (OpenTelemetry, Spri
 ## License
 
 Apache License 2.0 - see [`LICENSE`](LICENSE).
+
+--
