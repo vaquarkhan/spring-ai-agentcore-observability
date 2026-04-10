@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springaicommunity.agentcore.observability;
+package org.springaicommunity.agentcore.observability.masking;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
@@ -24,10 +24,13 @@ import io.opentelemetry.sdk.trace.data.EventData;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import java.util.ArrayList;
 import java.util.List;
+import org.springaicommunity.agentcore.observability.telemetry.GenAiTelemetrySupport;
 
 /**
  * Delegates to an underlying {@link SpanData} while masking string attribute values on the span and
  * on span events (including GenAI prompt/completion payloads).
+ *
+ * @author Vaquar Khan
  */
 final class MaskingSpanData extends DelegatingSpanData {
 
@@ -41,7 +44,7 @@ final class MaskingSpanData extends DelegatingSpanData {
   }
 
   @Override
-  public io.opentelemetry.api.common.Attributes getAttributes() {
+  public Attributes getAttributes() {
     if (maskedAttributes == null) {
       maskedAttributes = maskAttributes(super.getAttributes());
     }
@@ -107,7 +110,7 @@ final class MaskingSpanData extends DelegatingSpanData {
       return true;
     }
     // Defensive: mask any string attribute on GenAI content events
-    if (eventName != null && eventName.startsWith("gen_ai.content.")) {
+    if (eventName.startsWith("gen_ai.content.")) {
       return true;
     }
     return kn.contains("prompt") || kn.contains("completion") || kn.contains("password");

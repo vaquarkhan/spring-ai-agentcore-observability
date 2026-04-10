@@ -1,6 +1,6 @@
 # Spring AI AgentCore Observability
 
-Sample Spring Boot application demonstrating **OpenTelemetry** integration for [Spring AI Community Bedrock AgentCore](https://github.com/spring-ai-community/spring-ai-bedrock-agentcore): GenAI semantic attributes on invocation spans, optional prompt/completion capture (opt-in), and **PII masking** on span export so sensitive strings never leave the process unredacted.
+Spring Boot starter library providing **OpenTelemetry** integration for [Spring AI Community Bedrock AgentCore](https://github.com/spring-ai-community/spring-ai-bedrock-agentcore): GenAI semantic attributes on invocation spans, optional prompt/completion capture (opt-in), and **PII masking** on span export so sensitive strings never leave the process unredacted.
 
 ## Features
 
@@ -19,11 +19,7 @@ Sample Spring Boot application demonstrating **OpenTelemetry** integration for [
 mvn clean verify
 ```
 
-Run the sample application (exposes AgentCore `/invocations` when the starter is on the classpath):
-
-```bash
-mvn spring-boot:run
-```
+This compiles the library, runs all tests (unit + integration), and enforces the 100% coverage gate.
 
 ## Testing and coverage
 
@@ -32,19 +28,24 @@ mvn spring-boot:run
 
 ## Project layout (Spring conventions)
 
-This repository follows the standard Maven / Spring Boot layout:
+This repository follows the standard Maven / Spring Boot starter layout:
 
 | Path | Purpose |
 |------|---------|
-| `src/main/java` | Application, auto-configuration, AOP aspect, masking utilities |
+| `src/main/java/.../autoconfigure` | Spring Boot auto-configuration (`@AutoConfiguration`) |
+| `src/main/java/.../telemetry` | GenAI telemetry constants and AOP aspect |
+| `src/main/java/.../masking` | PII masking: `PiiMasker`, `MaskingSpanData`, `PiiMaskingSpanExporter` |
 | `src/main/resources` | `application.properties`, `META-INF/spring/` auto-config imports |
+| `src/test/java/.../sample` | Sample application and agent service (test-only) |
 | `src/test/java` | JUnit 5 tests (unit + `@SpringBootTest` integration) |
 | `doc/` | Supplementary technical notes and links |
 
 Main packages:
 
-- `org.springaicommunity.agentcore.observability` - core observability components
-- `org.springaicommunity.agentcore.observability.sample` - sample agent service for demos and tests
+- `o.s.a.o.autoconfigure` - auto-configuration wiring
+- `o.s.a.o.telemetry` - GenAI span enrichment and semantic convention constants
+- `o.s.a.o.masking` - PII redaction on span export
+- `o.s.a.o.sample` (test scope) - sample agent service for demos and integration tests
 
 ## Documentation
 

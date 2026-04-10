@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springaicommunity.agentcore.observability;
+package org.springaicommunity.agentcore.observability.masking;
 
 import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.trace.data.SpanData;
@@ -25,6 +25,8 @@ import java.util.Collection;
 /**
  * Wraps a delegate {@link SpanExporter} and applies {@link PiiMasker} to each {@link SpanData}
  * prior to export so sensitive content never reaches the network layer.
+ *
+ * @author Vaquar Khan
  */
 public class PiiMaskingSpanExporter implements SpanExporter {
 

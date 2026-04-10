@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-package org.springaicommunity.agentcore.observability;
+package org.springaicommunity.agentcore.observability.telemetry;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -45,6 +46,7 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.ai.chat.metadata.ChatGenerationMetadata;
 import org.springframework.ai.chat.metadata.ChatResponseMetadata;
 import org.springframework.ai.chat.metadata.DefaultUsage;
 import org.springframework.ai.chat.metadata.Usage;
@@ -104,7 +106,7 @@ class AgentCoreInvocationObservabilityAspectTest {
     ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);
     when(pjp.proceed()).thenThrow(new TimeoutException("t"));
 
-    org.assertj.core.api.Assertions.assertThatThrownBy(() -> aspect.aroundAgentCoreController(pjp))
+    assertThatThrownBy(() -> aspect.aroundAgentCoreController(pjp))
         .isInstanceOf(TimeoutException.class);
 
     ArgumentCaptor<String> err = ArgumentCaptor.forClass(String.class);
@@ -118,7 +120,7 @@ class AgentCoreInvocationObservabilityAspectTest {
     class SslSecurityException extends RuntimeException {}
     when(pjp.proceed()).thenThrow(new SslSecurityException());
 
-    org.assertj.core.api.Assertions.assertThatThrownBy(() -> aspect.aroundAgentCoreController(pjp))
+    assertThatThrownBy(() -> aspect.aroundAgentCoreController(pjp))
         .isInstanceOf(SslSecurityException.class);
 
     ArgumentCaptor<String> err = ArgumentCaptor.forClass(String.class);
@@ -131,7 +133,7 @@ class AgentCoreInvocationObservabilityAspectTest {
     ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);
     when(pjp.proceed()).thenThrow(new AuthenticationException());
 
-    org.assertj.core.api.Assertions.assertThatThrownBy(() -> aspect.aroundAgentCoreController(pjp))
+    assertThatThrownBy(() -> aspect.aroundAgentCoreController(pjp))
         .isInstanceOf(AuthenticationException.class);
 
     ArgumentCaptor<String> err = ArgumentCaptor.forClass(String.class);
@@ -144,7 +146,7 @@ class AgentCoreInvocationObservabilityAspectTest {
     ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);
     when(pjp.proceed()).thenThrow(new IllegalStateException("x"));
 
-    org.assertj.core.api.Assertions.assertThatThrownBy(() -> aspect.aroundAgentCoreController(pjp))
+    assertThatThrownBy(() -> aspect.aroundAgentCoreController(pjp))
         .isInstanceOf(IllegalStateException.class);
 
     ArgumentCaptor<String> err = ArgumentCaptor.forClass(String.class);
@@ -180,9 +182,7 @@ class AgentCoreInvocationObservabilityAspectTest {
                 List.of(
                     new Generation(
                         new AssistantMessage("x"),
-                        org.springframework.ai.chat.metadata.ChatGenerationMetadata.builder()
-                            .finishReason("stop")
-                            .build())))
+                        ChatGenerationMetadata.builder().finishReason("stop").build())))
             .build();
 
     ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);
@@ -203,9 +203,7 @@ class AgentCoreInvocationObservabilityAspectTest {
                     new Generation(new AssistantMessage("x"), null),
                     new Generation(
                         new AssistantMessage("y"),
-                        org.springframework.ai.chat.metadata.ChatGenerationMetadata.builder()
-                            .finishReason("stop")
-                            .build())))
+                        ChatGenerationMetadata.builder().finishReason("stop").build())))
             .build();
 
     ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);
@@ -229,9 +227,7 @@ class AgentCoreInvocationObservabilityAspectTest {
                 List.of(
                     new Generation(
                         new AssistantMessage("x"),
-                        org.springframework.ai.chat.metadata.ChatGenerationMetadata.builder()
-                            .finishReason("stop")
-                            .build())))
+                        ChatGenerationMetadata.builder().finishReason("stop").build())))
             .build();
 
     ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);
@@ -334,9 +330,7 @@ class AgentCoreInvocationObservabilityAspectTest {
                 List.of(
                     new Generation(
                         new AssistantMessage("hi"),
-                        org.springframework.ai.chat.metadata.ChatGenerationMetadata.builder()
-                            .finishReason("stop")
-                            .build())))
+                        ChatGenerationMetadata.builder().finishReason("stop").build())))
             .build();
 
     ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);
@@ -363,9 +357,7 @@ class AgentCoreInvocationObservabilityAspectTest {
             List.of(
                 new Generation(
                     new AssistantMessage("x"),
-                    org.springframework.ai.chat.metadata.ChatGenerationMetadata.builder()
-                        .finishReason("stop")
-                        .build())));
+                    ChatGenerationMetadata.builder().finishReason("stop").build())));
     when(response.getResult()).thenThrow(new RuntimeException("no text"));
 
     ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);
@@ -391,9 +383,7 @@ class AgentCoreInvocationObservabilityAspectTest {
                 List.of(
                     new Generation(
                         new AssistantMessage("out"),
-                        org.springframework.ai.chat.metadata.ChatGenerationMetadata.builder()
-                            .finishReason("stop")
-                            .build())))
+                        ChatGenerationMetadata.builder().finishReason("stop").build())))
             .build();
 
     ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);
@@ -417,9 +407,7 @@ class AgentCoreInvocationObservabilityAspectTest {
                 List.of(
                     new Generation(
                         new AssistantMessage("only-completion"),
-                        org.springframework.ai.chat.metadata.ChatGenerationMetadata.builder()
-                            .finishReason("stop")
-                            .build())))
+                        ChatGenerationMetadata.builder().finishReason("stop").build())))
             .build();
 
     ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);

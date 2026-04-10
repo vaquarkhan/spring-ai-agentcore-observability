@@ -80,6 +80,10 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+        <configuration>
+          <!-- This is a library, not a runnable application; skip repackaging. -->
+          <skip>true</skip>
+        </configuration>
       </plugin>
       <plugin>
         <groupId>org.jacoco</groupId>
@@ -90,7 +94,7 @@
                shorter than 13 (e.g. some Unicode digit scripts); JaCoCo cannot reliably exercise it
                across JDK/locale combinations, so this type is excluded from the coverage gate. -->
           <excludes>
-            <exclude>**/PiiMasker.class</exclude>
+            <exclude>**/masking/PiiMasker.class</exclude>
           </excludes>
         </configuration>
         <executions>

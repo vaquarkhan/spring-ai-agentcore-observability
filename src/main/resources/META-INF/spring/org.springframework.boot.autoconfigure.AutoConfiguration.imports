@@ -1,1 +1,1 @@
-org.springaicommunity.agentcore.observability.AgentCoreObservabilityAutoConfiguration
+org.springaicommunity.agentcore.observability.autoconfigure.AgentCoreObservabilityAutoConfiguration

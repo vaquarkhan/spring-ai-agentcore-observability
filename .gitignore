@@ -1,6 +1,30 @@
+# Build output
 /target/
+
+# IDE - IntelliJ
 /.idea/
 *.iml
+out/
+
+# IDE - Eclipse
 .classpath
 .project
 .settings/
+bin/
+
+# IDE - VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Maven
+*.log
+dependency-reduced-pom.xml
+
+# JaCoCo
+*.exec
+
+# Kiro
+.kiro/

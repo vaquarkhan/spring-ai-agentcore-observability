@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springaicommunity.agentcore.observability;
+package org.springaicommunity.agentcore.observability.masking;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -33,6 +33,7 @@ import io.opentelemetry.sdk.trace.data.StatusData;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.springaicommunity.agentcore.observability.telemetry.GenAiTelemetrySupport;
 
 class MaskingSpanDataTest {
 

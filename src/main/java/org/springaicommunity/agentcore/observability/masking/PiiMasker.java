@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springaicommunity.agentcore.observability;
+package org.springaicommunity.agentcore.observability.masking;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -22,6 +22,8 @@ import java.util.regex.Pattern;
 /**
  * Applies targeted redaction to telemetry strings before export. Patterns are compiled once at
  * construction time to avoid repeated compilation on the export hot path.
+ *
+ * @author Vaquar Khan
  */
 public class PiiMasker {
 

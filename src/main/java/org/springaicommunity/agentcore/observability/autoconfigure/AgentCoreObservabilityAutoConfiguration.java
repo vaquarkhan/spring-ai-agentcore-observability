@@ -14,13 +14,16 @@
  * limitations under the License.
  */
 
-package org.springaicommunity.agentcore.observability;
+package org.springaicommunity.agentcore.observability.autoconfigure;
 
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.metrics.Meter;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider;
 import org.springaicommunity.agentcore.annotation.AgentCoreInvocation;
+import org.springaicommunity.agentcore.observability.masking.PiiMasker;
+import org.springaicommunity.agentcore.observability.masking.PiiMaskingSpanExporter;
+import org.springaicommunity.agentcore.observability.telemetry.AgentCoreInvocationObservabilityAspect;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.context.annotation.Bean;
@@ -29,6 +32,8 @@ import org.springframework.core.env.Environment;
 /**
  * Registers the GenAI enrichment aspect and wraps the configured OTLP span exporter with {@link
  * PiiMaskingSpanExporter}.
+ *
+ * @author Vaquar Khan
  */
 @AutoConfiguration
 @ConditionalOnClass(AgentCoreInvocation.class)

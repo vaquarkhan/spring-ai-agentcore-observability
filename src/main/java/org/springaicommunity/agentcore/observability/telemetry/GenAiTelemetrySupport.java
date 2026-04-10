@@ -14,13 +14,15 @@
  * limitations under the License.
  */
 
-package org.springaicommunity.agentcore.observability;
+package org.springaicommunity.agentcore.observability.telemetry;
 
 import io.opentelemetry.api.common.AttributeKey;
 
 /**
  * Stable GenAI-related attribute keys aligned with OpenTelemetry semantic conventions for generative AI.
  * See: <a href="https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-spans/">GenAI spans</a>.
+ *
+ * @author Vaquar Khan
  */
 public final class GenAiTelemetrySupport {
 

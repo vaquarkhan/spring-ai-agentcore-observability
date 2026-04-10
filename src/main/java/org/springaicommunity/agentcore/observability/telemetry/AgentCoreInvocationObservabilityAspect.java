@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springaicommunity.agentcore.observability;
+package org.springaicommunity.agentcore.observability.telemetry;
 
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.metrics.DoubleHistogram;
@@ -43,6 +43,8 @@ import org.springframework.core.env.Environment;
  * so Spring AOP does not proxy agent implementations. AgentCore's method scanner reflects on each
  * bean type; CGLIB proxies for advised services may not retain annotations on overridden methods,
  * which would prevent registration of invocation handlers.
+ *
+ * @author Vaquar Khan
  */
 @Aspect
 public class AgentCoreInvocationObservabilityAspect {

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springaicommunity.agentcore.observability;
+package org.springaicommunity.agentcore.observability.masking;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

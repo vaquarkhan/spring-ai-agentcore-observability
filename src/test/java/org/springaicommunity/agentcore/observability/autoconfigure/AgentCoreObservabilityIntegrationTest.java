@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springaicommunity.agentcore.observability;
+package org.springaicommunity.agentcore.observability.autoconfigure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -26,6 +26,10 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springaicommunity.agentcore.observability.masking.PiiMasker;
+import org.springaicommunity.agentcore.observability.masking.PiiMaskingSpanExporter;
+import org.springaicommunity.agentcore.observability.sample.AgentCoreObservabilitySampleApplication;
+import org.springaicommunity.agentcore.observability.telemetry.GenAiTelemetrySupport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
