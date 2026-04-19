@@ -18,4 +18,8 @@
 - [Bedrock Converse API](https://docs.spring.io/spring-ai/reference/api/chat/bedrock-converse.html) - high-level mapping for Bedrock chat.
 - [AWS Bedrock prompt caching (Spring blog)](https://spring.io/blog/aws-bedrock-prompt-caching-support-in-spring-ai) - relates to cache token fields in responses.
 
-This repository does **not** replace Spring AI's model clients; it **enriches telemetry** when responses are already `ChatResponse` instances returned through the AgentCore `/invocations` flow.
+This repository does **not** replace Spring AI's model clients; it **enriches telemetry** when responses are already `ChatResponse` instances returned through the AgentCore `/invocations` flow (including when the controller returns **`Mono<ChatResponse>`** or **`Flux<ChatResponse>`**, in which case the observability aspect binds to the reactive publisher).
+
+---
+
+**Author:** Vaqur Khan

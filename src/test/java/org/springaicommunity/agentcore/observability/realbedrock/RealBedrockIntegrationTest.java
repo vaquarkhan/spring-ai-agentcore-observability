@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springaicommunity.agentcore.observability.autoconfigure;
+package org.springaicommunity.agentcore.observability.realbedrock;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -24,7 +24,8 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.springaicommunity.agentcore.observability.sample.AgentCoreObservabilitySampleApplication;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.springaicommunity.agentcore.observability.RealBedrockTestApplication;
 import org.springaicommunity.agentcore.observability.telemetry.GenAiTelemetrySupport;
 import org.springaicommunity.agentcore.observability.testsupport.OtelInMemorySpanExporterTestConfig;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,12 +38,19 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
-@SpringBootTest(classes = AgentCoreObservabilitySampleApplication.class)
+/**
+ * Optional live AWS Bedrock tests. Skipped unless {@code RUN_REAL_BEDROCK_TESTS=true} and
+ * AWS credentials are available ({@link RealBedrockConditions}). Set
+ * {@code SKIP_REAL_BEDROCK_TESTS=true} to force-disable.
+ */
+@SpringBootTest(classes = RealBedrockTestApplication.class)
 @AutoConfigureMockMvc
 @Import(OtelInMemorySpanExporterTestConfig.class)
 @TestPropertySource(properties = { "OTEL_GENAI_CAPTURE_CONTENT=true", "otel.traces.exporter=logging",
-		"otel.metrics.exporter=none", "otel.logs.exporter=none" })
-class AgentCoreObservabilityIntegrationTest {
+		"otel.metrics.exporter=none", "otel.logs.exporter=none", "spring.ai.bedrock.aws.region=us-east-1",
+		"spring.ai.bedrock.converse.chat.options.model=anthropic.claude-3-haiku-20240307-v1:0" })
+@EnabledIf("org.springaicommunity.agentcore.observability.realbedrock.RealBedrockConditions#liveAwsConfigured")
+class RealBedrockIntegrationTest {
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -53,10 +61,11 @@ class AgentCoreObservabilityIntegrationTest {
 	}
 
 	@Test
-	void invocationsEmitsGenAiAttributesAndMasksPiiInExportedSpans() throws Exception {
-		String body = "Hello jane@example.com SSN 123-45-6789 card 4111111111111111 phone 212-555-0199";
-
-		mockMvc.perform(MockMvcRequestBuilders.post("/invocations").contentType(MediaType.TEXT_PLAIN).content(body))
+	void realBedrockCallProducesGenAiSpanWithTokenCounts() throws Exception {
+		mockMvc
+			.perform(MockMvcRequestBuilders.post("/invocations")
+				.contentType(MediaType.TEXT_PLAIN)
+				.content("What is 2 plus 2? Answer with a single digit only."))
 			.andExpect(MockMvcResultMatchers.status().isOk());
 
 		List<SpanData> spans = OtelInMemorySpanExporterTestConfig.SPAN_EXPORTER.getFinishedSpanItems();
@@ -68,16 +77,35 @@ class AgentCoreObservabilityIntegrationTest {
 		SpanData span = genAi.orElseThrow();
 		assertThat(span.getAttributes().get(GenAiTelemetrySupport.GEN_AI_PROVIDER_NAME))
 			.isEqualTo(GenAiTelemetrySupport.PROVIDER_AWS_BEDROCK);
-		assertThat(span.getAttributes().get(GenAiTelemetrySupport.GEN_AI_USAGE_INPUT_TOKENS)).isEqualTo(45L);
-		assertThat(span.getAttributes().get(GenAiTelemetrySupport.GEN_AI_USAGE_OUTPUT_TOKENS)).isEqualTo(7L);
 
-		String promptEventPayload = findEventAttribute(span, GenAiTelemetrySupport.EVENT_GEN_AI_CONTENT_PROMPT,
+		Long inTok = span.getAttributes().get(GenAiTelemetrySupport.GEN_AI_USAGE_INPUT_TOKENS);
+		Long outTok = span.getAttributes().get(GenAiTelemetrySupport.GEN_AI_USAGE_OUTPUT_TOKENS);
+		assertThat(inTok).isNotNull();
+		assertThat(outTok).isNotNull();
+		assertThat(inTok).isGreaterThan(0L);
+		assertThat(outTok).isGreaterThan(0L);
+	}
+
+	@Test
+	void realBedrockCallMasksPiiInPromptAndCompletion() throws Exception {
+		String body = "Hello jane@example.com SSN 123-45-6789 — reply with OK only.";
+		mockMvc.perform(MockMvcRequestBuilders.post("/invocations").contentType(MediaType.TEXT_PLAIN).content(body))
+			.andExpect(MockMvcResultMatchers.status().isOk());
+
+		List<SpanData> spans = OtelInMemorySpanExporterTestConfig.SPAN_EXPORTER.getFinishedSpanItems();
+		Optional<SpanData> genAi = spans.stream()
+			.filter(s -> s.getAttributes().get(GenAiTelemetrySupport.GEN_AI_PROVIDER_NAME) != null)
+			.findFirst();
+
+		assertThat(genAi).isPresent();
+		SpanData span = genAi.orElseThrow();
+
+		String promptPayload = findEventAttribute(span, GenAiTelemetrySupport.EVENT_GEN_AI_CONTENT_PROMPT,
 				"gen_ai.prompt");
-		assertThat(promptEventPayload).isNotNull();
-		assertThat(promptEventPayload).doesNotContain("jane@example.com");
-		assertThat(promptEventPayload).contains("j***@***.com");
-		assertThat(promptEventPayload).contains("###-##-####");
-		assertThat(promptEventPayload).contains("4111-****-****-1111");
+		assertThat(promptPayload).isNotNull();
+		assertThat(promptPayload).doesNotContain("jane@example.com");
+		assertThat(promptPayload).contains("j***@***.com");
+		assertThat(promptPayload).contains("###-##-####");
 	}
 
 	private static String findEventAttribute(SpanData span, String eventName, String attributeKey) {

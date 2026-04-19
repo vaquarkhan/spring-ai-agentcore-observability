@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Vaquar Khan
+ * Copyright 2025-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,92 +27,94 @@ import java.util.List;
 import org.springaicommunity.agentcore.observability.telemetry.GenAiTelemetrySupport;
 
 /**
- * Delegates to an underlying {@link SpanData} while masking string attribute values on the span and
- * on span events (including GenAI prompt/completion payloads).
+ * Delegates to an underlying {@link SpanData} while masking string attribute values on
+ * the span and on span events (including GenAI prompt/completion payloads).
  *
  * @author Vaquar Khan
  */
 final class MaskingSpanData extends DelegatingSpanData {
 
-  private final PiiMasker masker;
-  private Attributes maskedAttributes;
-  private List<EventData> maskedEvents;
+	private final PiiMasker masker;
 
-  MaskingSpanData(SpanData delegate, PiiMasker masker) {
-    super(delegate);
-    this.masker = masker;
-  }
+	private Attributes maskedAttributes;
 
-  @Override
-  public Attributes getAttributes() {
-    if (maskedAttributes == null) {
-      maskedAttributes = maskAttributes(super.getAttributes());
-    }
-    return maskedAttributes;
-  }
+	private List<EventData> maskedEvents;
 
-  @Override
-  public List<EventData> getEvents() {
-    if (maskedEvents == null) {
-      maskedEvents = maskEvents(super.getEvents());
-    }
-    return maskedEvents;
-  }
+	MaskingSpanData(SpanData delegate, PiiMasker masker) {
+		super(delegate);
+		this.masker = masker;
+	}
 
-  private Attributes maskAttributes(Attributes attributes) {
-    AttributesBuilder b = attributes.toBuilder();
-    attributes.forEach(
-        (key, value) -> {
-          if (value instanceof String) {
-            @SuppressWarnings("unchecked")
-            AttributeKey<String> sk = (AttributeKey<String>) (AttributeKey<?>) key;
-            b.put(sk, masker.mask((String) value));
-          }
-        });
-    return b.build();
-  }
+	@Override
+	public Attributes getAttributes() {
+		if (maskedAttributes == null) {
+			maskedAttributes = maskAttributes(super.getAttributes());
+		}
+		return maskedAttributes;
+	}
 
-  private List<EventData> maskEvents(List<EventData> events) {
-    List<EventData> out = new ArrayList<>(events.size());
-    for (EventData e : events) {
-      Attributes masked = maskEventAttributes(e.getName(), e.getAttributes());
-      out.add(EventData.create(e.getEpochNanos(), e.getName(), masked, e.getTotalAttributeCount()));
-    }
-    return out;
-  }
+	@Override
+	public List<EventData> getEvents() {
+		if (maskedEvents == null) {
+			maskedEvents = maskEvents(super.getEvents());
+		}
+		return maskedEvents;
+	}
 
-  private Attributes maskEventAttributes(String eventName, Attributes attributes) {
-    AttributesBuilder b = attributes.toBuilder();
-    attributes.forEach(
-        (key, value) -> {
-          if (value instanceof String) {
-            @SuppressWarnings("unchecked")
-            AttributeKey<String> sk = (AttributeKey<String>) (AttributeKey<?>) key;
-            String s = (String) value;
-            if (shouldMaskEventAttribute(eventName, key)) {
-              b.put(sk, masker.mask(s));
-            } else {
-              b.put(sk, s);
-            }
-          }
-        });
-    return b.build();
-  }
+	private Attributes maskAttributes(Attributes attributes) {
+		AttributesBuilder b = attributes.toBuilder();
+		attributes.forEach((key, value) -> {
+			if (value instanceof String) {
+				@SuppressWarnings("unchecked")
+				AttributeKey<String> sk = (AttributeKey<String>) (AttributeKey<?>) key;
+				b.put(sk, masker.mask((String) value));
+			}
+		});
+		return b.build();
+	}
 
-  private boolean shouldMaskEventAttribute(String eventName, AttributeKey<?> key) {
-    String kn = key.getKey();
-    if (GenAiTelemetrySupport.EVENT_GEN_AI_CONTENT_PROMPT.equals(eventName)
-        && GenAiTelemetrySupport.GEN_AI_PROMPT.getKey().equals(kn)) {
-      return true;
-    }
-    if (GenAiTelemetrySupport.EVENT_GEN_AI_CONTENT_COMPLETION.equals(eventName)
-        && GenAiTelemetrySupport.GEN_AI_COMPLETION.getKey().equals(kn)) {
-      return true;
-    }
-    // Defensive: mask any string attribute on GenAI content events
-    if (eventName.startsWith("gen_ai.content.")) {
-      return true;
-    }
-    return kn.contains("prompt") || kn.contains("completion") || kn.contains("password");
-  }
+	private List<EventData> maskEvents(List<EventData> events) {
+		List<EventData> out = new ArrayList<>(events.size());
+		for (EventData e : events) {
+			Attributes masked = maskEventAttributes(e.getName(), e.getAttributes());
+			out.add(EventData.create(e.getEpochNanos(), e.getName(), masked, e.getTotalAttributeCount()));
+		}
+		return out;
+	}
+
+	private Attributes maskEventAttributes(String eventName, Attributes attributes) {
+		AttributesBuilder b = attributes.toBuilder();
+		attributes.forEach((key, value) -> {
+			if (value instanceof String) {
+				@SuppressWarnings("unchecked")
+				AttributeKey<String> sk = (AttributeKey<String>) (AttributeKey<?>) key;
+				String s = (String) value;
+				if (shouldMaskEventAttribute(eventName, key)) {
+					b.put(sk, masker.mask(s));
+				}
+				else {
+					b.put(sk, s);
+				}
+			}
+		});
+		return b.build();
+	}
+
+	private boolean shouldMaskEventAttribute(String eventName, AttributeKey<?> key) {
+		String kn = key.getKey();
+		if (GenAiTelemetrySupport.EVENT_GEN_AI_CONTENT_PROMPT.equals(eventName)
+				&& GenAiTelemetrySupport.GEN_AI_PROMPT.getKey().equals(kn)) {
+			return true;
+		}
+		if (GenAiTelemetrySupport.EVENT_GEN_AI_CONTENT_COMPLETION.equals(eventName)
+				&& GenAiTelemetrySupport.GEN_AI_COMPLETION.getKey().equals(kn)) {
+			return true;
+		}
+		// Defensive: mask any string attribute on GenAI content events
+		if (eventName.startsWith("gen_ai.content.")) {
+			return true;
+		}
+		return kn.contains("prompt") || kn.contains("completion") || kn.contains("password");
+	}
+
 }

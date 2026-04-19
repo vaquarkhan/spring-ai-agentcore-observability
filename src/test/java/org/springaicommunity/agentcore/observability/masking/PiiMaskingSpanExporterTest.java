@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Vaquar Khan
+ * Copyright 2025-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,26 +28,26 @@ import org.junit.jupiter.api.Test;
 
 class PiiMaskingSpanExporterTest {
 
-  @Test
-  void delegatesFlushAndShutdown() {
-    SpanExporter delegate = mock(SpanExporter.class);
-    when(delegate.flush()).thenReturn(CompletableResultCode.ofSuccess());
-    when(delegate.shutdown()).thenReturn(CompletableResultCode.ofSuccess());
+	@Test
+	void delegatesFlushAndShutdown() {
+		SpanExporter delegate = mock(SpanExporter.class);
+		when(delegate.flush()).thenReturn(CompletableResultCode.ofSuccess());
+		when(delegate.shutdown()).thenReturn(CompletableResultCode.ofSuccess());
 
-    PiiMaskingSpanExporter exporter = new PiiMaskingSpanExporter(delegate, new PiiMasker());
+		PiiMaskingSpanExporter exporter = new PiiMaskingSpanExporter(delegate, new PiiMasker());
 
-    assertThat(exporter.flush().isSuccess()).isTrue();
-    assertThat(exporter.shutdown().isSuccess()).isTrue();
-    verify(delegate).flush();
-    verify(delegate).shutdown();
-  }
+		assertThat(exporter.flush().isSuccess()).isTrue();
+		assertThat(exporter.shutdown().isSuccess()).isTrue();
+		verify(delegate).flush();
+		verify(delegate).shutdown();
+	}
 
-  @Test
-  void exportWrapsSpansWithMaskingDelegate() {
-    SpanExporter delegate = mock(SpanExporter.class);
-    when(delegate.export(org.mockito.ArgumentMatchers.any()))
-        .thenReturn(CompletableResultCode.ofSuccess());
-    PiiMaskingSpanExporter exporter = new PiiMaskingSpanExporter(delegate, new PiiMasker());
-    assertThat(exporter.export(List.of()).isSuccess()).isTrue();
-  }
+	@Test
+	void exportWrapsSpansWithMaskingDelegate() {
+		SpanExporter delegate = mock(SpanExporter.class);
+		when(delegate.export(org.mockito.ArgumentMatchers.any())).thenReturn(CompletableResultCode.ofSuccess());
+		PiiMaskingSpanExporter exporter = new PiiMaskingSpanExporter(delegate, new PiiMasker());
+		assertThat(exporter.export(List.of()).isSuccess()).isTrue();
+	}
+
 }

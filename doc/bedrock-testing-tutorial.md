@@ -67,13 +67,15 @@ Restart the app and call `/invocations` again. Look for span output that include
 
 ### 1.4 Optional: GenAI content events (prompt/completion in spans)
 
-Only when safe for your environment (may contain sensitive text until masked at export):
+Only when safe for your environment (may contain sensitive text until masked at export). Prefer Spring configuration; the legacy variable still works if the Spring property is unset:
 
 ```properties
+spring.ai.agentcore.observability.capture-content=true
+# or
 OTEL_GENAI_CAPTURE_CONTENT=true
 ```
 
-The `PiiMaskingSpanExporter` still redacts patterns (email, phone, etc.) before export. Do **not** enable this in production without policy review.
+The `PiiMaskingSpanExporter` still redacts patterns (email, phone, PAN with Luhn/prefix checks, etc.) before export. **Masking** can be tuned under `spring.ai.agentcore.observability.masking.*` (global enable, per-category toggles, custom regex). Do **not** enable content capture in production without policy review.
 
 ---
 
@@ -115,7 +117,19 @@ spring.ai.bedrock.converse.chat.options.model=anthropic.claude-3-haiku-20240307-
 
 Enable the chat model if your Spring AI version requires an explicit flag (check the reference for your BOM version).
 
-### 2.4 Replace the synthetic sample with a Bedrock-backed agent
+### 2.4 Automated live Bedrock tests in this repository
+
+The project includes `RealBedrockIntegrationTest` (see `src/test/java/.../realbedrock/`), which uses `RealBedrockAgentService` and Spring AI’s Bedrock Converse `ChatModel`. These tests are **skipped unless** you set **`RUN_REAL_BEDROCK_TESTS=true`** and configure AWS (see part 2.1). They assert **non-zero** `gen_ai.usage.*` token counts and PII masking on exported prompt events — not fixed token numbers, because Bedrock usage depends on the model and prompt.
+
+```bash
+# Example (PowerShell): opt-in live Bedrock tests only
+$env:RUN_REAL_BEDROCK_TESTS="true"
+mvn test -Dtest="RealBedrockIntegrationTest"
+```
+
+Set **`SKIP_REAL_BEDROCK_TESTS=true`** to force-disable even when `RUN_REAL_BEDROCK_TESTS` is set.
+
+### 2.5 Replace the synthetic sample with a Bedrock-backed agent
 
 Conceptually, inject `ChatModel` and return its `ChatResponse` from your `@AgentCoreInvocation` method, for example:
 
@@ -136,7 +150,7 @@ public class LiveBedrockAgentService {
 }
 ```
 
-Remove or `@Profile`-gate `SampleBedrockAgentService` so only **one** `@AgentCoreInvocation` method handles the contract (exact registration rules follow the AgentCore starter).
+Remove or `@Profile`-gate `SampleBedrockAgentService` so only **one** `@AgentCoreInvocation` method handles the contract (exact registration rules follow the AgentCore starter). The repository’s `RealBedrockTestApplication` excludes `SampleBedrockAgentService` from the component scan so the live tests can register `RealBedrockAgentService` instead.
 
 After this change:
 
@@ -144,7 +158,7 @@ After this change:
 2. `POST /invocations` with a text body should return **real model output** (latency and token usage will reflect Bedrock).
 3. Observability: the same aspect still wraps the controller; spans should show GenAI attributes derived from the **real** `ChatResponse` metadata.
 
-### 2.5 Cost and safety
+### 2.6 Cost and safety
 
 - Every successful invocation **incurs Bedrock usage**; monitor in **AWS Billing** and **CloudWatch**.
 - Do not commit access keys. Use IAM roles, short-lived credentials, or Secrets Manager in real deployments.
@@ -179,3 +193,7 @@ After this change:
 - [GenAI observability](genai-observability.md)
 - [Spring Boot + OpenTelemetry](spring-boot-and-otel.md)
 - [Project README](../README.md)
+
+---
+
+**Author:** Vaqur Khan

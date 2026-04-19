@@ -25,3 +25,7 @@ Custom behavior:
 | `OTEL_TRACES_EXPORTER` | e.g. `otlp`, `logging`, `none` - tests may set `logging` so an exporter exists for customizers. |
 
 See also: [Configure the SDK - Java](https://opentelemetry.io/docs/languages/java/configuration/).
+
+---
+
+**Author:** Vaqur Khan

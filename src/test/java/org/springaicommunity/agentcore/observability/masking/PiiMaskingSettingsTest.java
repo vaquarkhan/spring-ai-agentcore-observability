@@ -14,27 +14,25 @@
  * limitations under the License.
  */
 
-package org.springaicommunity.agentcore.observability.telemetry;
+package org.springaicommunity.agentcore.observability.masking;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.lang.reflect.Constructor;
 import org.junit.jupiter.api.Test;
+import org.springaicommunity.agentcore.observability.autoconfigure.AgentCoreObservabilityProperties;
 
-class GenAiTelemetrySupportTest {
+class PiiMaskingSettingsTest {
 
 	@Test
-	void constantsAreReachable() {
-		assertThat(GenAiTelemetrySupport.PROVIDER_AWS_BEDROCK).isNotBlank();
-		assertThat(GenAiTelemetrySupport.OP_CHAT).isEqualTo("chat");
-		assertThat(GenAiTelemetrySupport.METRIC_GEN_AI_CLIENT_TOKEN_USAGE).contains("gen_ai");
+	void fromNullMaskingUsesDefaults() {
+		assertThat(PiiMaskingSettings.from(null).enabled()).isTrue();
 	}
 
 	@Test
-	void privateConstructorIsNotCallableFromOutside() throws Exception {
-		Constructor<GenAiTelemetrySupport> c = GenAiTelemetrySupport.class.getDeclaredConstructor();
-		c.setAccessible(true);
-		assertThat(c.newInstance()).isNotNull();
+	void fromSkipsBlankCustomRegex() {
+		AgentCoreObservabilityProperties.Masking masking = new AgentCoreObservabilityProperties.Masking();
+		masking.setCustomRegex(java.util.List.of("  ", "A\\d+"));
+		assertThat(PiiMaskingSettings.from(masking).customPatterns()).hasSize(1);
 	}
 
 }
