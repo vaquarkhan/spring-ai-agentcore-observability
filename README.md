@@ -233,3 +233,6 @@ Planning to add  Phase 2 features are:
 - Cost metric + cache hit ratio derived metrics
 - SPI for custom span enrichers
 - Sampling hints for GenAI spans
+
+### Tutorial - 
+https://github.com/vaquarkhan/spring-ai-agentcore-observability/blob/main/doc/OBSERVABILITY-TUTORIAL.md
