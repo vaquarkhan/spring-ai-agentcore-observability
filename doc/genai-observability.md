@@ -23,7 +23,7 @@ Implementation constants live in `GenAiTelemetrySupport` (e.g. `gen_ai.provider.
 **Correlation attributes** (when HTTP headers are available on the AgentCore request):
 
 - `aws.bedrock.agentcore.session_id` — from `x-amzn-bedrock-agentcore-session-id`
-- `aws.request_id` — from `x-amzn-requestid`
+- `aws.request_id` — from `x-amzn-request-id` (standard AWS spelling; also matches `x-amzn-requestid` / `X-Amzn-RequestId` when present)
 
 **Optional content capture** is resolved once at aspect construction from, in order:
 
