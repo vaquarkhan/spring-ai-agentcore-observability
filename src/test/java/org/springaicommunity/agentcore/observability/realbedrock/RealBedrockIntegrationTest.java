@@ -77,6 +77,10 @@ class RealBedrockIntegrationTest {
 		SpanData span = genAi.orElseThrow();
 		assertThat(span.getAttributes().get(GenAiTelemetrySupport.GEN_AI_PROVIDER_NAME))
 			.isEqualTo(GenAiTelemetrySupport.PROVIDER_AWS_BEDROCK);
+		assertThat(span.getAttributes().get(GenAiTelemetrySupport.GEN_AI_REQUEST_MODEL))
+			.isEqualTo("anthropic.claude-3-haiku-20240307-v1:0");
+		assertThat(span.getAttributes().get(GenAiTelemetrySupport.GEN_AI_RESPONSE_MODEL))
+			.isEqualTo("anthropic.claude-3-haiku-20240307-v1:0");
 
 		Long inTok = span.getAttributes().get(GenAiTelemetrySupport.GEN_AI_USAGE_INPUT_TOKENS);
 		Long outTok = span.getAttributes().get(GenAiTelemetrySupport.GEN_AI_USAGE_OUTPUT_TOKENS);

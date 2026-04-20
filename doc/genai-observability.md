@@ -25,6 +25,10 @@ Implementation constants live in `GenAiTelemetrySupport` (e.g. `gen_ai.provider.
 - `aws.bedrock.agentcore.session_id` — from `x-amzn-bedrock-agentcore-session-id`
 - `aws.request_id` — from `x-amzn-request-id` (standard AWS spelling; also matches `x-amzn-requestid` / `X-Amzn-RequestId` when present)
 
+Header resolution does not require a hard compile dependency on both Spring MVC and Spring WebFlux: the library keeps `spring-web` and `spring-webflux` **optional** and resolves headers reflectively when those types are present at runtime.
+
+**Model attributes** (`gen_ai.request.model` / `gen_ai.response.model`): taken from `ChatResponse` metadata when set. If the provider omits the model (some Bedrock Converse paths), the aspect falls back to `spring.ai.bedrock.converse.chat.options.model`, then `spring.ai.openai.chat.options.model`, so spans still carry a stable model id when configured.
+
 **Optional content capture** is resolved once at aspect construction from, in order:
 
 1. `spring.ai.agentcore.observability.capture-content` (if set in the environment), else  

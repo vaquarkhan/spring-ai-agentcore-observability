@@ -241,6 +241,127 @@ class AgentCoreInvocationObservabilityAspectTest {
 	}
 
 	@Test
+	void treatsEmptyMetadataModelAsMissingAndUsesEnvironment() throws Throwable {
+		MockEnvironment env = new MockEnvironment().withProperty("spring.ai.bedrock.converse.chat.options.model",
+				"from-env-empty-meta");
+		aspect = new AgentCoreInvocationObservabilityAspect(tracer, meter, new AgentCoreObservabilityProperties(), env);
+
+		ChatResponseMetadata meta = mock(ChatResponseMetadata.class);
+		when(meta.getUsage()).thenReturn(new DefaultUsage(1, 1));
+		when(meta.getModel()).thenReturn("");
+
+		ChatResponse response = ChatResponse.builder()
+			.metadata(meta)
+			.generations(List.of(new Generation(new AssistantMessage("x"),
+					ChatGenerationMetadata.builder().finishReason("stop").build())))
+			.build();
+
+		ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);
+		when(pjp.proceed()).thenReturn(response);
+
+		aspect.aroundAgentCoreController(pjp);
+
+		verify(span).setAttribute(GenAiTelemetrySupport.GEN_AI_REQUEST_MODEL, "from-env-empty-meta");
+	}
+
+	@Test
+	void fillsModelFromEnvironmentWhenMetadataOmitsModel() throws Throwable {
+		MockEnvironment env = new MockEnvironment().withProperty("spring.ai.bedrock.converse.chat.options.model",
+				"anthropic.from-env-model");
+		aspect = new AgentCoreInvocationObservabilityAspect(tracer, meter, new AgentCoreObservabilityProperties(), env);
+
+		ChatResponseMetadata meta = mock(ChatResponseMetadata.class);
+		when(meta.getUsage()).thenReturn(new DefaultUsage(1, 1));
+		when(meta.getModel()).thenReturn(null);
+
+		ChatResponse response = ChatResponse.builder()
+			.metadata(meta)
+			.generations(List.of(new Generation(new AssistantMessage("x"),
+					ChatGenerationMetadata.builder().finishReason("stop").build())))
+			.build();
+
+		ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);
+		when(pjp.proceed()).thenReturn(response);
+
+		aspect.aroundAgentCoreController(pjp);
+
+		verify(span).setAttribute(GenAiTelemetrySupport.GEN_AI_REQUEST_MODEL, "anthropic.from-env-model");
+		verify(span).setAttribute(GenAiTelemetrySupport.GEN_AI_RESPONSE_MODEL, "anthropic.from-env-model");
+	}
+
+	@Test
+	void prefersBedrockModelPropertyOverOpenAiWhenBothSet() throws Throwable {
+		MockEnvironment env = new MockEnvironment()
+			.withProperty("spring.ai.bedrock.converse.chat.options.model", "bedrock-model")
+			.withProperty("spring.ai.openai.chat.options.model", "openai-model");
+		aspect = new AgentCoreInvocationObservabilityAspect(tracer, meter, new AgentCoreObservabilityProperties(), env);
+
+		ChatResponseMetadata meta = mock(ChatResponseMetadata.class);
+		when(meta.getUsage()).thenReturn(new DefaultUsage(1, 1));
+		when(meta.getModel()).thenReturn(null);
+
+		ChatResponse response = ChatResponse.builder()
+			.metadata(meta)
+			.generations(List.of(new Generation(new AssistantMessage("x"),
+					ChatGenerationMetadata.builder().finishReason("stop").build())))
+			.build();
+
+		ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);
+		when(pjp.proceed()).thenReturn(response);
+
+		aspect.aroundAgentCoreController(pjp);
+
+		verify(span).setAttribute(GenAiTelemetrySupport.GEN_AI_REQUEST_MODEL, "bedrock-model");
+	}
+
+	@Test
+	void usesOpenAiModelWhenBedrockPropertyIsBlank() throws Throwable {
+		MockEnvironment env = new MockEnvironment().withProperty("spring.ai.bedrock.converse.chat.options.model", "")
+			.withProperty("spring.ai.openai.chat.options.model", "openai-fallback");
+		aspect = new AgentCoreInvocationObservabilityAspect(tracer, meter, new AgentCoreObservabilityProperties(), env);
+
+		ChatResponseMetadata meta = mock(ChatResponseMetadata.class);
+		when(meta.getUsage()).thenReturn(new DefaultUsage(1, 1));
+		when(meta.getModel()).thenReturn(null);
+
+		ChatResponse response = ChatResponse.builder()
+			.metadata(meta)
+			.generations(List.of(new Generation(new AssistantMessage("x"),
+					ChatGenerationMetadata.builder().finishReason("stop").build())))
+			.build();
+
+		ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);
+		when(pjp.proceed()).thenReturn(response);
+
+		aspect.aroundAgentCoreController(pjp);
+
+		verify(span).setAttribute(GenAiTelemetrySupport.GEN_AI_REQUEST_MODEL, "openai-fallback");
+	}
+
+	@Test
+	void usesOpenAiModelPropertyWhenBedrockUnset() throws Throwable {
+		MockEnvironment env = new MockEnvironment().withProperty("spring.ai.openai.chat.options.model", "openai-only");
+		aspect = new AgentCoreInvocationObservabilityAspect(tracer, meter, new AgentCoreObservabilityProperties(), env);
+
+		ChatResponseMetadata meta = mock(ChatResponseMetadata.class);
+		when(meta.getUsage()).thenReturn(new DefaultUsage(1, 1));
+		when(meta.getModel()).thenReturn(null);
+
+		ChatResponse response = ChatResponse.builder()
+			.metadata(meta)
+			.generations(List.of(new Generation(new AssistantMessage("x"),
+					ChatGenerationMetadata.builder().finishReason("stop").build())))
+			.build();
+
+		ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);
+		when(pjp.proceed()).thenReturn(response);
+
+		aspect.aroundAgentCoreController(pjp);
+
+		verify(span).setAttribute(GenAiTelemetrySupport.GEN_AI_REQUEST_MODEL, "openai-only");
+	}
+
+	@Test
 	void usesUnknownModelWhenMetadataMissingModel() throws Throwable {
 		ChatResponse response = ChatResponse.builder()
 			.metadata(ChatResponseMetadata.builder().usage(new DefaultUsage(1, 1)).build())
@@ -528,6 +649,22 @@ class AgentCoreInvocationObservabilityAspectTest {
 	}
 
 	@Test
+	void fluxPipelineErrorRecordsOnSpan() throws Throwable {
+		ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);
+		when(pjp.proceed()).thenReturn(Flux.error(new IllegalStateException("stream failed")));
+
+		Object out = aspect.aroundAgentCoreController(pjp);
+
+		@SuppressWarnings("unchecked")
+		Flux<?> flux = (Flux<?>) out;
+		StepVerifier.create(flux).expectError(IllegalStateException.class).verify();
+
+		verify(span).setStatus(StatusCode.ERROR);
+		verify(span).recordException(any(IllegalStateException.class));
+		verify(span).setAttribute(eq(GenAiTelemetrySupport.ERROR_TYPE), eq("server_error"));
+	}
+
+	@Test
 	void fluxWithMultipleChatResponsesRecordsTokenMetricsOnceFromLastChunk() throws Throwable {
 		ChatResponse first = ChatResponse.builder()
 			.metadata(ChatResponseMetadata.builder().model("m").usage(new DefaultUsage(99, 1)).build())
@@ -627,6 +764,18 @@ class AgentCoreInvocationObservabilityAspectTest {
 		Mono<?> mono = (Mono<?>) out;
 		StepVerifier.create(mono).expectError(IllegalStateException.class).verify();
 		verify(span).setAttribute(eq(GenAiTelemetrySupport.ERROR_TYPE), eq("server_error"));
+	}
+
+	@Test
+	void monoWithNonChatResponseSkipsGenAiAttributes() throws Throwable {
+		ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);
+		when(pjp.proceed()).thenReturn(Mono.just("plain"));
+
+		Object out = aspect.aroundAgentCoreController(pjp);
+		@SuppressWarnings("unchecked")
+		Mono<String> mono = (Mono<String>) out;
+		StepVerifier.create(mono).expectNext("plain").verifyComplete();
+		verify(histogram, never()).record(anyDouble(), any(Attributes.class));
 	}
 
 }

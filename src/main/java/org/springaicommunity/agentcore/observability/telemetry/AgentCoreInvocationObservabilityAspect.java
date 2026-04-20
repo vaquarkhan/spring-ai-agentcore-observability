@@ -24,7 +24,6 @@ import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
-import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -40,10 +39,6 @@ import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.core.env.Environment;
-import org.springframework.web.context.request.RequestAttributes;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
-import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -63,6 +58,8 @@ public class AgentCoreInvocationObservabilityAspect {
 
 	private final boolean captureContent;
 
+	private final Environment environment;
+
 	public AgentCoreInvocationObservabilityAspect(Tracer tracer, Meter meter,
 			AgentCoreObservabilityProperties properties, Environment environment) {
 		this.tracer = tracer;
@@ -70,6 +67,7 @@ public class AgentCoreInvocationObservabilityAspect {
 			.setUnit("{token}")
 			.build();
 		this.captureContent = properties.resolveCaptureContent(environment);
+		this.environment = environment;
 	}
 
 	@Around("execution(* org.springaicommunity.agentcore.controller.AgentCoreInvocationsController.handleJsonInvocation(..))"
@@ -129,31 +127,7 @@ public class AgentCoreInvocationObservabilityAspect {
 	}
 
 	private static String firstHeader(ProceedingJoinPoint joinPoint, String name) {
-		Object[] args = joinPoint.getArgs();
-		if (args != null) {
-			for (Object a : args) {
-				if (a instanceof HttpServletRequest req) {
-					String v = req.getHeader(name);
-					if (v != null && !v.isEmpty()) {
-						return v;
-					}
-				}
-				if (a instanceof ServerWebExchange ex) {
-					List<String> vals = ex.getRequest().getHeaders().get(name);
-					if (vals != null && !vals.isEmpty()) {
-						return vals.get(0);
-					}
-				}
-			}
-		}
-		RequestAttributes ra = RequestContextHolder.getRequestAttributes();
-		if (ra instanceof ServletRequestAttributes sra) {
-			String v = sra.getRequest().getHeader(name);
-			if (v != null && !v.isEmpty()) {
-				return v;
-			}
-		}
-		return null;
+		return AgentCoreInvocationHeaderSupport.firstHeader(joinPoint, name);
 	}
 
 	private <T> Mono<T> instrumentMono(Mono<T> mono, Span span, ProceedingJoinPoint joinPoint) {
@@ -204,7 +178,10 @@ public class AgentCoreInvocationObservabilityAspect {
 
 		ChatResponseMetadata metadata = response.getMetadata();
 		String model = metadata != null ? metadata.getModel() : null;
-		if (model != null) {
+		if (model == null || model.isEmpty()) {
+			model = resolveModelFromEnvironment();
+		}
+		if (model != null && !model.isEmpty()) {
 			span.setAttribute(GenAiTelemetrySupport.GEN_AI_REQUEST_MODEL, model);
 			span.setAttribute(GenAiTelemetrySupport.GEN_AI_RESPONSE_MODEL, model);
 		}
@@ -228,7 +205,7 @@ public class AgentCoreInvocationObservabilityAspect {
 					finish.stream().distinct().collect(Collectors.joining(",")));
 		}
 
-		String modelAttr = model != null ? model : "unknown";
+		String modelAttr = (model != null && !model.isEmpty()) ? model : "unknown";
 		Attributes inputMetricAttrs = Attributes.builder()
 			.put(GenAiTelemetrySupport.GEN_AI_TOKEN_TYPE, "input")
 			.put(GenAiTelemetrySupport.GEN_AI_REQUEST_MODEL, modelAttr)
@@ -261,6 +238,14 @@ public class AgentCoreInvocationObservabilityAspect {
 			return 0L;
 		}
 		return usage.getPromptTokens().longValue();
+	}
+
+	private String resolveModelFromEnvironment() {
+		String m = this.environment.getProperty("spring.ai.bedrock.converse.chat.options.model");
+		if (m != null && !m.isEmpty()) {
+			return m;
+		}
+		return this.environment.getProperty("spring.ai.openai.chat.options.model");
 	}
 
 	private static long cacheReadTokens(ChatResponseMetadata metadata) {

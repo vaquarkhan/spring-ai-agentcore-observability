@@ -119,7 +119,9 @@ Enable the chat model if your Spring AI version requires an explicit flag (check
 
 ### 2.4 Automated live Bedrock tests in this repository
 
-The project includes `RealBedrockIntegrationTest` (see `src/test/java/.../realbedrock/`), which uses `RealBedrockAgentService` and Spring AI’s Bedrock Converse `ChatModel`. These tests are **skipped unless** you set **`RUN_REAL_BEDROCK_TESTS=true`** and configure AWS (see part 2.1). They assert **non-zero** `gen_ai.usage.*` token counts and PII masking on exported prompt events — not fixed token numbers, because Bedrock usage depends on the model and prompt.
+The project includes `RealBedrockIntegrationTest` (see `src/test/java/.../realbedrock/`), which uses `RealBedrockAgentService` and Spring AI’s Bedrock Converse `ChatModel`. These tests are **skipped unless** you set **`RUN_REAL_BEDROCK_TESTS=true`** and configure AWS (see part 2.1). They assert **non-zero** `gen_ai.usage.*` token counts, **`gen_ai.request.model` / `gen_ai.response.model`** (from metadata or configured model properties), and PII masking on exported prompt events — not fixed token numbers, because Bedrock usage depends on the model and prompt.
+
+`RealBedrockTestApplication` imports **`RealBedrockAwsClientsConfiguration`**, which registers `BedrockRuntimeClient` and `BedrockRuntimeAsyncClient` as Spring beans with `destroyMethod = "close"` so the AWS SDK HTTP stack shuts down cleanly with the test context (Spring AI uses these beans when present instead of creating unmanaged clients).
 
 ```bash
 # Example (PowerShell): opt-in live Bedrock tests only
@@ -150,7 +152,7 @@ public class LiveBedrockAgentService {
 }
 ```
 
-Remove or `@Profile`-gate `SampleBedrockAgentService` so only **one** `@AgentCoreInvocation` method handles the contract (exact registration rules follow the AgentCore starter). The repository’s `RealBedrockTestApplication` excludes `SampleBedrockAgentService` from the component scan so the live tests can register `RealBedrockAgentService` instead.
+Remove or `@Profile`-gate `SampleBedrockAgentService` so only **one** `@AgentCoreInvocation` method handles the contract (exact registration rules follow the AgentCore starter). The repository’s `RealBedrockTestApplication` uses a **narrow** `scanBasePackages` (`…observability.realbedrock` only) so the synthetic sample agent is not picked up and the live tests register `RealBedrockAgentService` instead.
 
 After this change:
 
