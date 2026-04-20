@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Vaquar Khan
+ * Copyright 2025-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,37 +23,39 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 /**
- * Wraps a delegate {@link SpanExporter} and applies {@link PiiMasker} to each {@link SpanData}
- * prior to export so sensitive content never reaches the network layer.
+ * Wraps a delegate {@link SpanExporter} and applies {@link PiiMasker} to each
+ * {@link SpanData} prior to export so sensitive content never reaches the network layer.
  *
  * @author Vaquar Khan
  */
 public class PiiMaskingSpanExporter implements SpanExporter {
 
-  private final SpanExporter delegate;
-  private final PiiMasker masker;
+	private final SpanExporter delegate;
 
-  public PiiMaskingSpanExporter(SpanExporter delegate, PiiMasker masker) {
-    this.delegate = delegate;
-    this.masker = masker;
-  }
+	private final PiiMasker masker;
 
-  @Override
-  public CompletableResultCode export(Collection<SpanData> spans) {
-    Collection<SpanData> masked = new ArrayList<>(spans.size());
-    for (SpanData s : spans) {
-      masked.add(new MaskingSpanData(s, masker));
-    }
-    return delegate.export(masked);
-  }
+	public PiiMaskingSpanExporter(SpanExporter delegate, PiiMasker masker) {
+		this.delegate = delegate;
+		this.masker = masker;
+	}
 
-  @Override
-  public CompletableResultCode flush() {
-    return delegate.flush();
-  }
+	@Override
+	public CompletableResultCode export(Collection<SpanData> spans) {
+		Collection<SpanData> masked = new ArrayList<>(spans.size());
+		for (SpanData s : spans) {
+			masked.add(new MaskingSpanData(s, masker));
+		}
+		return delegate.export(masked);
+	}
 
-  @Override
-  public CompletableResultCode shutdown() {
-    return delegate.shutdown();
-  }
+	@Override
+	public CompletableResultCode flush() {
+		return delegate.flush();
+	}
+
+	@Override
+	public CompletableResultCode shutdown() {
+		return delegate.shutdown();
+	}
+
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Vaquar Khan
+ * Copyright 2025-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,205 +24,297 @@ import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.springaicommunity.agentcore.observability.autoconfigure.AgentCoreObservabilityProperties;
 import org.springframework.ai.chat.metadata.ChatResponseMetadata;
 import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.core.env.Environment;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 /**
- * Wraps the AgentCore HTTP controller entry points (not the user {@code @AgentCoreInvocation} bean)
- * so Spring AOP does not proxy agent implementations. AgentCore's method scanner reflects on each
- * bean type; CGLIB proxies for advised services may not retain annotations on overridden methods,
- * which would prevent registration of invocation handlers.
- *
- * @author Vaquar Khan
+ * Wraps the AgentCore HTTP controller entry points (not the user
+ * {@code @AgentCoreInvocation} bean) so Spring AOP does not proxy agent implementations.
+ * AgentCore's method scanner reflects on each bean type; CGLIB proxies for advised
+ * services may not retain annotations on overridden methods, which would prevent
+ * registration of invocation handlers.
  */
 @Aspect
 public class AgentCoreInvocationObservabilityAspect {
 
-  private final Tracer tracer;
-  private final Environment environment;
-  private final DoubleHistogram tokenUsageHistogram;
+	private final Tracer tracer;
 
-  public AgentCoreInvocationObservabilityAspect(
-      Tracer tracer, Meter meter, Environment environment) {
-    this.tracer = tracer;
-    this.environment = environment;
-    this.tokenUsageHistogram =
-        meter
-            .histogramBuilder(GenAiTelemetrySupport.METRIC_GEN_AI_CLIENT_TOKEN_USAGE)
-            .setUnit("{token}")
-            .build();
-  }
+	private final DoubleHistogram tokenUsageHistogram;
 
-  @Around(
-      "execution(* org.springaicommunity.agentcore.controller.AgentCoreInvocationsController.handleJsonInvocation(..))"
-          + " || execution(* org.springaicommunity.agentcore.controller.AgentCoreInvocationsController.handleTextInvocation(..))")
-  public Object aroundAgentCoreController(ProceedingJoinPoint joinPoint) throws Throwable {
-    String spanName = GenAiTelemetrySupport.OP_CHAT;
-    Span span =
-        tracer
-            .spanBuilder(spanName)
-            .setSpanKind(SpanKind.INTERNAL)
-            .startSpan();
-    try (Scope scope = span.makeCurrent()) {
-      Object result = joinPoint.proceed();
-      if (result instanceof ChatResponse response) {
-        applyGenAiAttributes(span, joinPoint, response);
-      }
-      span.setStatus(StatusCode.OK);
-      return result;
-    } catch (Throwable t) {
-      span.setStatus(StatusCode.ERROR);
-      span.recordException(t);
-      span.setAttribute(
-          GenAiTelemetrySupport.ERROR_TYPE, errorType(t));
-      throw t;
-    } finally {
-      span.end();
-    }
-  }
+	private final boolean captureContent;
 
-  private void applyGenAiAttributes(Span span, ProceedingJoinPoint joinPoint, ChatResponse response) {
-    String operation =
-        response.hasToolCalls()
-            ? GenAiTelemetrySupport.OP_EXECUTE_TOOL
-            : GenAiTelemetrySupport.OP_CHAT;
-    span.updateName(operation);
+	public AgentCoreInvocationObservabilityAspect(Tracer tracer, Meter meter,
+			AgentCoreObservabilityProperties properties, Environment environment) {
+		this.tracer = tracer;
+		this.tokenUsageHistogram = meter.histogramBuilder(GenAiTelemetrySupport.METRIC_GEN_AI_CLIENT_TOKEN_USAGE)
+			.setUnit("{token}")
+			.build();
+		this.captureContent = properties.resolveCaptureContent(environment);
+	}
 
-    span.setAttribute(GenAiTelemetrySupport.GEN_AI_OPERATION_NAME, operation);
-    span.setAttribute(GenAiTelemetrySupport.GEN_AI_PROVIDER_NAME, GenAiTelemetrySupport.PROVIDER_AWS_BEDROCK);
-    span.setAttribute(GenAiTelemetrySupport.GEN_AI_SYSTEM, GenAiTelemetrySupport.PROVIDER_AWS_BEDROCK);
+	@Around("execution(* org.springaicommunity.agentcore.controller.AgentCoreInvocationsController.handleJsonInvocation(..))"
+			+ " || execution(* org.springaicommunity.agentcore.controller.AgentCoreInvocationsController.handleTextInvocation(..))")
+	public Object aroundAgentCoreController(ProceedingJoinPoint joinPoint) throws Throwable {
+		Span span = this.tracer.spanBuilder(GenAiTelemetrySupport.OP_CHAT).setSpanKind(SpanKind.INTERNAL).startSpan();
+		AtomicBoolean deferredEnd = new AtomicBoolean(false);
+		try (Scope scope = span.makeCurrent()) {
+			applyAgentCoreRequestAttributes(span, joinPoint);
+			Object result = joinPoint.proceed();
+			if (result instanceof Mono<?>) {
+				deferredEnd.set(true);
+				return instrumentMono((Mono<?>) result, span, joinPoint);
+			}
+			if (result instanceof Flux<?>) {
+				deferredEnd.set(true);
+				return instrumentFlux((Flux<?>) result, span, joinPoint);
+			}
+			if (result instanceof ChatResponse response) {
+				applyGenAiAttributes(span, joinPoint, response);
+			}
+			span.setStatus(StatusCode.OK);
+			return result;
+		}
+		catch (Throwable t) {
+			span.setStatus(StatusCode.ERROR);
+			span.recordException(t);
+			span.setAttribute(GenAiTelemetrySupport.ERROR_TYPE, errorType(t));
+			throw t;
+		}
+		finally {
+			if (!deferredEnd.get()) {
+				span.end();
+			}
+		}
+	}
 
-    ChatResponseMetadata metadata = response.getMetadata();
-    if (metadata != null) {
-      Optional.ofNullable(metadata.getModel())
-          .ifPresent(m -> span.setAttribute(GenAiTelemetrySupport.GEN_AI_REQUEST_MODEL, m));
-      Optional.ofNullable(metadata.getModel())
-          .ifPresent(m -> span.setAttribute(GenAiTelemetrySupport.GEN_AI_RESPONSE_MODEL, m));
-    }
+	private void applyAgentCoreRequestAttributes(Span span, ProceedingJoinPoint joinPoint) {
+		String session = firstHeader(joinPoint, GenAiTelemetrySupport.HTTP_HEADER_AGENTCORE_SESSION_ID);
+		if (session != null && !session.isEmpty()) {
+			span.setAttribute(GenAiTelemetrySupport.AWS_BEDROCK_AGENTCORE_SESSION_ID, session);
+		}
+		String requestId = firstHeader(joinPoint, GenAiTelemetrySupport.HTTP_HEADER_AMZN_REQUEST_ID);
+		if (requestId != null && !requestId.isEmpty()) {
+			span.setAttribute(GenAiTelemetrySupport.AWS_REQUEST_ID, requestId);
+		}
+	}
 
-    Usage usage = metadata != null ? metadata.getUsage() : null;
-    long inputTokens = baseInputTokens(usage) + cacheReadTokens(metadata);
-    long outputTokens = usage != null && usage.getCompletionTokens() != null
-        ? usage.getCompletionTokens().longValue()
-        : 0L;
+	private static String firstHeader(ProceedingJoinPoint joinPoint, String name) {
+		Object[] args = joinPoint.getArgs();
+		if (args != null) {
+			for (Object a : args) {
+				if (a instanceof HttpServletRequest req) {
+					String v = req.getHeader(name);
+					if (v != null && !v.isEmpty()) {
+						return v;
+					}
+				}
+				if (a instanceof ServerWebExchange ex) {
+					List<String> vals = ex.getRequest().getHeaders().get(name);
+					if (vals != null && !vals.isEmpty()) {
+						return vals.get(0);
+					}
+				}
+			}
+		}
+		RequestAttributes ra = RequestContextHolder.getRequestAttributes();
+		if (ra instanceof ServletRequestAttributes sra) {
+			String v = sra.getRequest().getHeader(name);
+			if (v != null && !v.isEmpty()) {
+				return v;
+			}
+		}
+		return null;
+	}
 
-    span.setAttribute(GenAiTelemetrySupport.GEN_AI_USAGE_INPUT_TOKENS, inputTokens);
-    span.setAttribute(GenAiTelemetrySupport.GEN_AI_USAGE_OUTPUT_TOKENS, outputTokens);
+	private <T> Mono<T> instrumentMono(Mono<T> mono, Span span, ProceedingJoinPoint joinPoint) {
+		return mono.flatMap(r -> {
+			if (r instanceof ChatResponse response) {
+				applyGenAiAttributes(span, joinPoint, response);
+			}
+			return Mono.just(r);
+		}).doOnSuccess(v -> span.setStatus(StatusCode.OK)).doOnError(t -> {
+			span.setStatus(StatusCode.ERROR);
+			span.recordException(t);
+			span.setAttribute(GenAiTelemetrySupport.ERROR_TYPE, errorType(t));
+		}).doFinally(sig -> span.end());
+	}
 
-    List<String> finish = new ArrayList<>();
-    for (Generation g : response.getResults()) {
-      if (g.getMetadata() != null && g.getMetadata().getFinishReason() != null) {
-        finish.add(g.getMetadata().getFinishReason());
-      }
-    }
-    if (!finish.isEmpty()) {
-      span.setAttribute(
-          GenAiTelemetrySupport.GEN_AI_RESPONSE_FINISH_REASONS,
-          finish.stream().distinct().collect(Collectors.joining(",")));
-    }
+	/**
+	 * Streaming {@link ChatResponse} sequences: token usage and metrics are only
+	 * meaningful on the final chunk in typical providers, so we record GenAI attributes
+	 * once from the last emission.
+	 */
+	private <T> Flux<T> instrumentFlux(Flux<T> flux, Span span, ProceedingJoinPoint joinPoint) {
+		AtomicReference<ChatResponse> lastResponse = new AtomicReference<>();
+		return flux.doOnNext(r -> {
+			if (r instanceof ChatResponse response) {
+				lastResponse.set(response);
+			}
+		}).doOnComplete(() -> {
+			ChatResponse last = lastResponse.get();
+			if (last != null) {
+				applyGenAiAttributes(span, joinPoint, last);
+			}
+			span.setStatus(StatusCode.OK);
+		}).doOnError(t -> {
+			span.setStatus(StatusCode.ERROR);
+			span.recordException(t);
+			span.setAttribute(GenAiTelemetrySupport.ERROR_TYPE, errorType(t));
+		}).doFinally(sig -> span.end());
+	}
 
-    String modelAttr =
-        metadata != null && metadata.getModel() != null ? metadata.getModel() : "unknown";
-    Attributes inputMetricAttrs =
-        Attributes.builder()
-            .put(GenAiTelemetrySupport.GEN_AI_TOKEN_TYPE, "input")
-            .put(GenAiTelemetrySupport.GEN_AI_REQUEST_MODEL, modelAttr)
-            .put(GenAiTelemetrySupport.GEN_AI_PROVIDER_NAME, GenAiTelemetrySupport.PROVIDER_AWS_BEDROCK)
-            .build();
-    Attributes outputMetricAttrs =
-        Attributes.builder()
-            .put(GenAiTelemetrySupport.GEN_AI_TOKEN_TYPE, "output")
-            .put(GenAiTelemetrySupport.GEN_AI_REQUEST_MODEL, modelAttr)
-            .put(GenAiTelemetrySupport.GEN_AI_PROVIDER_NAME, GenAiTelemetrySupport.PROVIDER_AWS_BEDROCK)
-            .build();
-    tokenUsageHistogram.record((double) inputTokens, inputMetricAttrs);
-    tokenUsageHistogram.record((double) outputTokens, outputMetricAttrs);
+	private void applyGenAiAttributes(Span span, ProceedingJoinPoint joinPoint, ChatResponse response) {
+		String operation = response.hasToolCalls() ? GenAiTelemetrySupport.OP_EXECUTE_TOOL
+				: GenAiTelemetrySupport.OP_CHAT;
+		span.updateName(operation);
 
-    if (captureContent()) {
-      String prompt = extractPrompt(joinPoint.getArgs());
-      if (prompt != null) {
-        span.addEvent(
-            GenAiTelemetrySupport.EVENT_GEN_AI_CONTENT_PROMPT,
-            Attributes.of(GenAiTelemetrySupport.GEN_AI_PROMPT, prompt));
-      }
-      String completion = extractCompletion(response);
-      if (completion != null) {
-        span.addEvent(
-            GenAiTelemetrySupport.EVENT_GEN_AI_CONTENT_COMPLETION,
-            Attributes.of(GenAiTelemetrySupport.GEN_AI_COMPLETION, completion));
-      }
-    }
-  }
+		span.setAttribute(GenAiTelemetrySupport.GEN_AI_OPERATION_NAME, operation);
+		span.setAttribute(GenAiTelemetrySupport.GEN_AI_PROVIDER_NAME, GenAiTelemetrySupport.PROVIDER_AWS_BEDROCK);
+		span.setAttribute(GenAiTelemetrySupport.GEN_AI_SYSTEM, GenAiTelemetrySupport.PROVIDER_AWS_BEDROCK);
 
-  private static long baseInputTokens(Usage usage) {
-    if (usage == null || usage.getPromptTokens() == null) {
-      return 0L;
-    }
-    return usage.getPromptTokens().longValue();
-  }
+		ChatResponseMetadata metadata = response.getMetadata();
+		String model = metadata != null ? metadata.getModel() : null;
+		if (model != null) {
+			span.setAttribute(GenAiTelemetrySupport.GEN_AI_REQUEST_MODEL, model);
+			span.setAttribute(GenAiTelemetrySupport.GEN_AI_RESPONSE_MODEL, model);
+		}
 
-  private static long cacheReadTokens(ChatResponseMetadata metadata) {
-    if (metadata == null) {
-      return 0L;
-    }
-    Object v = metadata.get("cacheReadInputTokens");
-    if (v instanceof Number n) {
-      return n.longValue();
-    }
-    return 0L;
-  }
+		Usage usage = metadata != null ? metadata.getUsage() : null;
+		long inputTokens = baseInputTokens(usage) + cacheReadTokens(metadata);
+		long outputTokens = usage != null && usage.getCompletionTokens() != null
+				? usage.getCompletionTokens().longValue() : 0L;
 
-  private boolean captureContent() {
-    String envFlag = environment.getProperty("OTEL_GENAI_CAPTURE_CONTENT");
-    if (envFlag == null) {
-      envFlag = System.getenv("OTEL_GENAI_CAPTURE_CONTENT");
-    }
-    return Boolean.parseBoolean(envFlag);
-  }
+		span.setAttribute(GenAiTelemetrySupport.GEN_AI_USAGE_INPUT_TOKENS, inputTokens);
+		span.setAttribute(GenAiTelemetrySupport.GEN_AI_USAGE_OUTPUT_TOKENS, outputTokens);
 
-  private static String extractPrompt(Object[] args) {
-    if (args == null) {
-      return null;
-    }
-    for (Object a : args) {
-      if (a instanceof String s) {
-        return s;
-      }
-    }
-    return null;
-  }
+		List<String> finish = new ArrayList<>();
+		for (Generation g : response.getResults()) {
+			if (g.getMetadata() != null && g.getMetadata().getFinishReason() != null) {
+				finish.add(g.getMetadata().getFinishReason());
+			}
+		}
+		if (!finish.isEmpty()) {
+			span.setAttribute(GenAiTelemetrySupport.GEN_AI_RESPONSE_FINISH_REASONS,
+					finish.stream().distinct().collect(Collectors.joining(",")));
+		}
 
-  private static String extractCompletion(ChatResponse response) {
-    try {
-      Generation gen = response.getResult();
-      if (gen != null && gen.getOutput() != null) {
-        return gen.getOutput().getText();
-      }
-    } catch (RuntimeException ignored) {
-      // Tool-only generations may omit textual content; avoid failing the aspect.
-    }
-    return null;
-  }
+		String modelAttr = model != null ? model : "unknown";
+		Attributes inputMetricAttrs = Attributes.builder()
+			.put(GenAiTelemetrySupport.GEN_AI_TOKEN_TYPE, "input")
+			.put(GenAiTelemetrySupport.GEN_AI_REQUEST_MODEL, modelAttr)
+			.put(GenAiTelemetrySupport.GEN_AI_PROVIDER_NAME, GenAiTelemetrySupport.PROVIDER_AWS_BEDROCK)
+			.build();
+		Attributes outputMetricAttrs = Attributes.builder()
+			.put(GenAiTelemetrySupport.GEN_AI_TOKEN_TYPE, "output")
+			.put(GenAiTelemetrySupport.GEN_AI_REQUEST_MODEL, modelAttr)
+			.put(GenAiTelemetrySupport.GEN_AI_PROVIDER_NAME, GenAiTelemetrySupport.PROVIDER_AWS_BEDROCK)
+			.build();
+		this.tokenUsageHistogram.record((double) inputTokens, inputMetricAttrs);
+		this.tokenUsageHistogram.record((double) outputTokens, outputMetricAttrs);
 
-  private static String errorType(Throwable t) {
-    String name = t.getClass().getSimpleName().toLowerCase(Locale.ROOT);
-    if (name.contains("timeout")) {
-      return "timeout";
-    }
-    if (name.contains("auth") || name.contains("security")) {
-      return "authentication_failure";
-    }
-    return name;
-  }
+		if (this.captureContent) {
+			String prompt = extractPrompt(joinPoint.getArgs());
+			if (prompt != null) {
+				span.addEvent(GenAiTelemetrySupport.EVENT_GEN_AI_CONTENT_PROMPT,
+						Attributes.of(GenAiTelemetrySupport.GEN_AI_PROMPT, prompt));
+			}
+			String completion = extractCompletion(response);
+			if (completion != null) {
+				span.addEvent(GenAiTelemetrySupport.EVENT_GEN_AI_CONTENT_COMPLETION,
+						Attributes.of(GenAiTelemetrySupport.GEN_AI_COMPLETION, completion));
+			}
+		}
+	}
+
+	private static long baseInputTokens(Usage usage) {
+		if (usage == null || usage.getPromptTokens() == null) {
+			return 0L;
+		}
+		return usage.getPromptTokens().longValue();
+	}
+
+	private static long cacheReadTokens(ChatResponseMetadata metadata) {
+		if (metadata == null) {
+			return 0L;
+		}
+		Object v = metadata.get("cacheReadInputTokens");
+		if (v instanceof Number n) {
+			return n.longValue();
+		}
+		return 0L;
+	}
+
+	private static String extractPrompt(Object[] args) {
+		if (args == null) {
+			return null;
+		}
+		for (Object a : args) {
+			if (a instanceof String s) {
+				return s;
+			}
+		}
+		return null;
+	}
+
+	private static String extractCompletion(ChatResponse response) {
+		try {
+			Generation gen = response.getResult();
+			if (gen != null && gen.getOutput() != null) {
+				return gen.getOutput().getText();
+			}
+		}
+		catch (RuntimeException ignored) {
+			// Tool-only generations may omit textual content; avoid failing the aspect.
+		}
+		return null;
+	}
+
+	private static String errorType(Throwable t) {
+		String cn = t.getClass().getName();
+		if (cn.contains("Throttling") || cn.endsWith("ThrottlingException")) {
+			return "rate_limit";
+		}
+		if (cn.contains("ValidationException") || cn.contains("InvalidParameter") || cn.contains("IllegalArgument")) {
+			return "invalid_request";
+		}
+		if (cn.contains("Timeout") || cn.contains("RequestTimeout") || cn.contains("ReadTimeout")) {
+			return "timeout";
+		}
+		if (cn.contains("Auth") || cn.contains("Security") || cn.endsWith("AuthenticationException")
+				|| cn.contains("AccessDenied")) {
+			return "authentication_failure";
+		}
+		if (cn.contains("amazon.awssdk") && cn.contains("ServiceException")) {
+			return "server_error";
+		}
+		String name = t.getClass().getSimpleName().toLowerCase(Locale.ROOT);
+		if (name.contains("timeout")) {
+			return "timeout";
+		}
+		if (name.contains("auth") || name.contains("security")) {
+			return "authentication_failure";
+		}
+		return "server_error";
+	}
+
 }

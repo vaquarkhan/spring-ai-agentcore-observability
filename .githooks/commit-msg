@@ -1,0 +1,7 @@
+#!/bin/sh
+# Remove editor-injected footer lines from commit messages before the commit is finalized.
+# Enable: git config core.hooksPath .githooks
+msg="$1"
+[ -n "$msg" ] && [ -f "$msg" ] || exit 0
+tmp=$(mktemp) || exit 0
+grep -vi '^made-with:' "$msg" | grep -vi '^[Mm]ade with cursor[[:space:]]*$' > "$tmp" && mv "$tmp" "$msg"

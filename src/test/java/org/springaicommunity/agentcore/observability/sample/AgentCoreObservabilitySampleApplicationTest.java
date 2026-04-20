@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Vaquar Khan
+ * Copyright 2025-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,18 +28,16 @@ import org.springframework.context.ConfigurableApplicationContext;
 
 class AgentCoreObservabilitySampleApplicationTest {
 
-  @Test
-  void mainDelegatesToSpringApplicationRun() {
-    ConfigurableApplicationContext ctx = mock(ConfigurableApplicationContext.class);
-    try (MockedStatic<SpringApplication> spring = mockStatic(SpringApplication.class)) {
-      spring
-          .when(() -> SpringApplication.run(eq(AgentCoreObservabilitySampleApplication.class), any()))
-          .thenReturn(ctx);
-      AgentCoreObservabilitySampleApplication.main(new String[] {"--spring.main.banner-mode=off"});
-      spring.verify(
-          () ->
-              SpringApplication.run(
-                  eq(AgentCoreObservabilitySampleApplication.class), any(String[].class)));
-    }
-  }
+	@Test
+	void mainDelegatesToSpringApplicationRun() {
+		ConfigurableApplicationContext ctx = mock(ConfigurableApplicationContext.class);
+		try (MockedStatic<SpringApplication> spring = mockStatic(SpringApplication.class)) {
+			spring.when(() -> SpringApplication.run(eq(AgentCoreObservabilitySampleApplication.class), any()))
+				.thenReturn(ctx);
+			AgentCoreObservabilitySampleApplication.main(new String[] { "--spring.main.banner-mode=off" });
+			spring.verify(() -> SpringApplication.run(eq(AgentCoreObservabilitySampleApplication.class),
+					any(String[].class)));
+		}
+	}
+
 }

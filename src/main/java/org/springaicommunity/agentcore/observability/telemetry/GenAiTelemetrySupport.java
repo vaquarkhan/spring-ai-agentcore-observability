@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Vaquar Khan
+ * Copyright 2025-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,46 +19,69 @@ package org.springaicommunity.agentcore.observability.telemetry;
 import io.opentelemetry.api.common.AttributeKey;
 
 /**
- * Stable GenAI-related attribute keys aligned with OpenTelemetry semantic conventions for generative AI.
- * See: <a href="https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-spans/">GenAI spans</a>.
- *
- * @author Vaquar Khan
+ * Stable GenAI-related attribute keys aligned with OpenTelemetry semantic conventions for
+ * generative AI. See:
+ * <a href="https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-spans/">GenAI
+ * spans</a>.
  */
 public final class GenAiTelemetrySupport {
 
-  public static final String PROVIDER_AWS_BEDROCK = "aws.bedrock";
+	public static final String PROVIDER_AWS_BEDROCK = "aws.bedrock";
 
-  public static final AttributeKey<String> GEN_AI_OPERATION_NAME =
-      AttributeKey.stringKey("gen_ai.operation.name");
-  public static final AttributeKey<String> GEN_AI_PROVIDER_NAME =
-      AttributeKey.stringKey("gen_ai.provider.name");
-  public static final AttributeKey<String> GEN_AI_SYSTEM = AttributeKey.stringKey("gen_ai.system");
-  public static final AttributeKey<String> GEN_AI_REQUEST_MODEL =
-      AttributeKey.stringKey("gen_ai.request.model");
-  public static final AttributeKey<String> GEN_AI_RESPONSE_MODEL =
-      AttributeKey.stringKey("gen_ai.response.model");
-  public static final AttributeKey<Long> GEN_AI_USAGE_INPUT_TOKENS =
-      AttributeKey.longKey("gen_ai.usage.input_tokens");
-  public static final AttributeKey<Long> GEN_AI_USAGE_OUTPUT_TOKENS =
-      AttributeKey.longKey("gen_ai.usage.output_tokens");
-  public static final AttributeKey<String> GEN_AI_RESPONSE_FINISH_REASONS =
-      AttributeKey.stringKey("gen_ai.response.finish_reasons");
-  public static final AttributeKey<String> ERROR_TYPE = AttributeKey.stringKey("error.type");
+	public static final AttributeKey<String> GEN_AI_OPERATION_NAME = AttributeKey.stringKey("gen_ai.operation.name");
 
-  /** Histogram metric name from GenAI client metrics semantic conventions. */
-  public static final String METRIC_GEN_AI_CLIENT_TOKEN_USAGE = "gen_ai.client.token.usage";
+	public static final AttributeKey<String> GEN_AI_PROVIDER_NAME = AttributeKey.stringKey("gen_ai.provider.name");
 
-  public static final AttributeKey<String> GEN_AI_TOKEN_TYPE = AttributeKey.stringKey("gen_ai.token.type");
+	public static final AttributeKey<String> GEN_AI_SYSTEM = AttributeKey.stringKey("gen_ai.system");
 
-  /** Span events for optional prompt/completion capture (opt-in). */
-  public static final String EVENT_GEN_AI_CONTENT_PROMPT = "gen_ai.content.prompt";
-  public static final String EVENT_GEN_AI_CONTENT_COMPLETION = "gen_ai.content.completion";
+	public static final AttributeKey<String> GEN_AI_REQUEST_MODEL = AttributeKey.stringKey("gen_ai.request.model");
 
-  public static final AttributeKey<String> GEN_AI_PROMPT = AttributeKey.stringKey("gen_ai.prompt");
-  public static final AttributeKey<String> GEN_AI_COMPLETION = AttributeKey.stringKey("gen_ai.completion");
+	public static final AttributeKey<String> GEN_AI_RESPONSE_MODEL = AttributeKey.stringKey("gen_ai.response.model");
 
-  public static final String OP_CHAT = "chat";
-  public static final String OP_EXECUTE_TOOL = "execute_tool";
+	public static final AttributeKey<Long> GEN_AI_USAGE_INPUT_TOKENS = AttributeKey
+		.longKey("gen_ai.usage.input_tokens");
 
-  private GenAiTelemetrySupport() {}
+	public static final AttributeKey<Long> GEN_AI_USAGE_OUTPUT_TOKENS = AttributeKey
+		.longKey("gen_ai.usage.output_tokens");
+
+	public static final AttributeKey<String> GEN_AI_RESPONSE_FINISH_REASONS = AttributeKey
+		.stringKey("gen_ai.response.finish_reasons");
+
+	public static final AttributeKey<String> ERROR_TYPE = AttributeKey.stringKey("error.type");
+
+	/**
+	 * Amazon Bedrock / AgentCore request correlation (from inbound HTTP headers when
+	 * present).
+	 */
+	public static final AttributeKey<String> AWS_BEDROCK_AGENTCORE_SESSION_ID = AttributeKey
+		.stringKey("aws.bedrock.agentcore.session_id");
+
+	public static final AttributeKey<String> AWS_REQUEST_ID = AttributeKey.stringKey("aws.request_id");
+
+	/** Lowercase HTTP header names used for AgentCore correlation. */
+	public static final String HTTP_HEADER_AGENTCORE_SESSION_ID = "x-amzn-bedrock-agentcore-session-id";
+
+	public static final String HTTP_HEADER_AMZN_REQUEST_ID = "x-amzn-requestid";
+
+	/** Histogram metric name from GenAI client metrics semantic conventions. */
+	public static final String METRIC_GEN_AI_CLIENT_TOKEN_USAGE = "gen_ai.client.token.usage";
+
+	public static final AttributeKey<String> GEN_AI_TOKEN_TYPE = AttributeKey.stringKey("gen_ai.token.type");
+
+	/** Span events for optional prompt/completion capture (opt-in). */
+	public static final String EVENT_GEN_AI_CONTENT_PROMPT = "gen_ai.content.prompt";
+
+	public static final String EVENT_GEN_AI_CONTENT_COMPLETION = "gen_ai.content.completion";
+
+	public static final AttributeKey<String> GEN_AI_PROMPT = AttributeKey.stringKey("gen_ai.prompt");
+
+	public static final AttributeKey<String> GEN_AI_COMPLETION = AttributeKey.stringKey("gen_ai.completion");
+
+	public static final String OP_CHAT = "chat";
+
+	public static final String OP_EXECUTE_TOOL = "execute_tool";
+
+	private GenAiTelemetrySupport() {
+	}
+
 }

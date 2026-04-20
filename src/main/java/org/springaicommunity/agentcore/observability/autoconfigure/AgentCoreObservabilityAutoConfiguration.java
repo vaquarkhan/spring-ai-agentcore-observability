@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Vaquar Khan
+ * Copyright 2025-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,54 +22,53 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider;
 import org.springaicommunity.agentcore.annotation.AgentCoreInvocation;
 import org.springaicommunity.agentcore.observability.masking.PiiMasker;
+import org.springaicommunity.agentcore.observability.masking.PiiMaskingSettings;
 import org.springaicommunity.agentcore.observability.masking.PiiMaskingSpanExporter;
 import org.springaicommunity.agentcore.observability.telemetry.AgentCoreInvocationObservabilityAspect;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 
 /**
- * Registers the GenAI enrichment aspect and wraps the configured OTLP span exporter with {@link
- * PiiMaskingSpanExporter}.
- *
- * @author Vaquar Khan
+ * Registers the GenAI enrichment aspect and wraps the configured OTLP span exporter with
+ * {@link PiiMaskingSpanExporter}.
  */
 @AutoConfiguration
+@EnableConfigurationProperties(AgentCoreObservabilityProperties.class)
 @ConditionalOnClass(AgentCoreInvocation.class)
 public class AgentCoreObservabilityAutoConfiguration {
 
-  private static final String INSTRUMENTATION_SCOPE = "org.springaicommunity.agentcore.observability";
+	private static final String INSTRUMENTATION_SCOPE = "org.springaicommunity.agentcore.observability";
 
-  @Bean
-  public PiiMasker agentCorePiiMasker() {
-    return new PiiMasker();
-  }
+	@Bean
+	public PiiMasker agentCorePiiMasker(AgentCoreObservabilityProperties properties) {
+		return new PiiMasker(PiiMaskingSettings.from(properties.getMasking()));
+	}
 
-  @Bean
-  public AutoConfigurationCustomizerProvider agentCorePiiMaskingSpanExporterCustomizer(
-      PiiMasker piiMasker) {
-    return customizer ->
-        customizer.addSpanExporterCustomizer(
-            (spanExporter, config) -> new PiiMaskingSpanExporter(spanExporter, piiMasker));
-  }
+	@Bean
+	public AutoConfigurationCustomizerProvider agentCorePiiMaskingSpanExporterCustomizer(PiiMasker piiMasker) {
+		return customizer -> customizer
+			.addSpanExporterCustomizer((spanExporter, config) -> new PiiMaskingSpanExporter(spanExporter, piiMasker));
+	}
 
-  @Bean
-  public Tracer agentCoreObservabilityTracer(OpenTelemetry openTelemetry) {
-    return openTelemetry.getTracer(INSTRUMENTATION_SCOPE);
-  }
+	@Bean
+	public Tracer agentCoreObservabilityTracer(OpenTelemetry openTelemetry) {
+		return openTelemetry.getTracer(INSTRUMENTATION_SCOPE);
+	}
 
-  @Bean
-  public Meter agentCoreObservabilityMeter(OpenTelemetry openTelemetry) {
-    return openTelemetry.getMeter(INSTRUMENTATION_SCOPE);
-  }
+	@Bean
+	public Meter agentCoreObservabilityMeter(OpenTelemetry openTelemetry) {
+		return openTelemetry.getMeter(INSTRUMENTATION_SCOPE);
+	}
 
-  @Bean
-  public AgentCoreInvocationObservabilityAspect agentCoreInvocationObservabilityAspect(
-      Tracer agentCoreObservabilityTracer,
-      Meter agentCoreObservabilityMeter,
-      Environment environment) {
-    return new AgentCoreInvocationObservabilityAspect(
-        agentCoreObservabilityTracer, agentCoreObservabilityMeter, environment);
-  }
+	@Bean
+	public AgentCoreInvocationObservabilityAspect agentCoreInvocationObservabilityAspect(
+			Tracer agentCoreObservabilityTracer, Meter agentCoreObservabilityMeter,
+			AgentCoreObservabilityProperties properties, Environment environment) {
+		return new AgentCoreInvocationObservabilityAspect(agentCoreObservabilityTracer, agentCoreObservabilityMeter,
+				properties, environment);
+	}
+
 }
