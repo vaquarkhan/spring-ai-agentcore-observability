@@ -528,6 +528,29 @@ class AgentCoreInvocationObservabilityAspectTest {
 	}
 
 	@Test
+	void fluxWithMultipleChatResponsesRecordsTokenMetricsOnceFromLastChunk() throws Throwable {
+		ChatResponse first = ChatResponse.builder()
+			.metadata(ChatResponseMetadata.builder().model("m").usage(new DefaultUsage(99, 1)).build())
+			.generations(Collections.emptyList())
+			.build();
+		ChatResponse last = ChatResponse.builder()
+			.metadata(ChatResponseMetadata.builder().model("m").usage(new DefaultUsage(1, 2)).build())
+			.generations(List.of(new Generation(new AssistantMessage("final"),
+					ChatGenerationMetadata.builder().finishReason("stop").build())))
+			.build();
+		ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);
+		when(pjp.proceed()).thenReturn(Flux.just(first, last));
+
+		Object out = aspect.aroundAgentCoreController(pjp);
+
+		@SuppressWarnings("unchecked")
+		Flux<ChatResponse> flux = (Flux<ChatResponse>) out;
+		StepVerifier.create(flux).expectNext(first, last).verifyComplete();
+
+		verify(histogram, times(2)).record(anyDouble(), any(Attributes.class));
+	}
+
+	@Test
 	void mapsThrottlingExceptionToRateLimit() throws Throwable {
 		class ThrottlingException extends RuntimeException {
 

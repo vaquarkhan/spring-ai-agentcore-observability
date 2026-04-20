@@ -142,9 +142,12 @@ class PiiMaskerTest {
 		java.lang.reflect.Method hm = PiiMasker.class.getDeclaredMethod("hasPlausibleIssuerPrefix", String.class);
 		hm.setAccessible(true);
 		assertThat(hm.invoke(null, "")).isEqualTo(false);
+		assertThat(hm.invoke(null, "2000000000000000")).isEqualTo(false);
 		assertThat(hm.invoke(null, "6445000000000000")).isEqualTo(true);
 		assertThat(hm.invoke(null, "6221260000000000")).isEqualTo(true);
 		assertThat(hm.invoke(null, "2223000000000000")).isEqualTo(true);
+		assertThat(hm.invoke(null, "3527111111111111")).isEqualTo(false);
+		assertThat(hm.invoke(null, "3530111111111111")).isEqualTo(true);
 	}
 
 }

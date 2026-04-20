@@ -28,8 +28,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -159,12 +159,24 @@ public class AgentCoreInvocationObservabilityAspect {
 		}).doFinally(sig -> span.end());
 	}
 
+	/**
+	 * Streaming {@link ChatResponse} sequences: token usage and metrics are only
+	 * meaningful on the final chunk in typical providers, so we record GenAI attributes
+	 * once from the last emission.
+	 */
 	private <T> Flux<T> instrumentFlux(Flux<T> flux, Span span, ProceedingJoinPoint joinPoint) {
+		AtomicReference<ChatResponse> lastResponse = new AtomicReference<>();
 		return flux.doOnNext(r -> {
 			if (r instanceof ChatResponse response) {
-				applyGenAiAttributes(span, joinPoint, response);
+				lastResponse.set(response);
 			}
-		}).doOnComplete(() -> span.setStatus(StatusCode.OK)).doOnError(t -> {
+		}).doOnComplete(() -> {
+			ChatResponse last = lastResponse.get();
+			if (last != null) {
+				applyGenAiAttributes(span, joinPoint, last);
+			}
+			span.setStatus(StatusCode.OK);
+		}).doOnError(t -> {
 			span.setStatus(StatusCode.ERROR);
 			span.recordException(t);
 			span.setAttribute(GenAiTelemetrySupport.ERROR_TYPE, errorType(t));
@@ -181,11 +193,10 @@ public class AgentCoreInvocationObservabilityAspect {
 		span.setAttribute(GenAiTelemetrySupport.GEN_AI_SYSTEM, GenAiTelemetrySupport.PROVIDER_AWS_BEDROCK);
 
 		ChatResponseMetadata metadata = response.getMetadata();
-		if (metadata != null) {
-			Optional.ofNullable(metadata.getModel())
-				.ifPresent(m -> span.setAttribute(GenAiTelemetrySupport.GEN_AI_REQUEST_MODEL, m));
-			Optional.ofNullable(metadata.getModel())
-				.ifPresent(m -> span.setAttribute(GenAiTelemetrySupport.GEN_AI_RESPONSE_MODEL, m));
+		String model = metadata != null ? metadata.getModel() : null;
+		if (model != null) {
+			span.setAttribute(GenAiTelemetrySupport.GEN_AI_REQUEST_MODEL, model);
+			span.setAttribute(GenAiTelemetrySupport.GEN_AI_RESPONSE_MODEL, model);
 		}
 
 		Usage usage = metadata != null ? metadata.getUsage() : null;
@@ -207,7 +218,7 @@ public class AgentCoreInvocationObservabilityAspect {
 					finish.stream().distinct().collect(Collectors.joining(",")));
 		}
 
-		String modelAttr = metadata != null && metadata.getModel() != null ? metadata.getModel() : "unknown";
+		String modelAttr = model != null ? model : "unknown";
 		Attributes inputMetricAttrs = Attributes.builder()
 			.put(GenAiTelemetrySupport.GEN_AI_TOKEN_TYPE, "input")
 			.put(GenAiTelemetrySupport.GEN_AI_REQUEST_MODEL, modelAttr)

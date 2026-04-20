@@ -110,6 +110,12 @@ public class PiiMasker {
 			return c1 >= '1' && c1 <= '5';
 		}
 		if (c0 == '3') {
+			if (digits.length() >= 4) {
+				int prefix4 = Integer.parseInt(digits.substring(0, 4));
+				if (prefix4 >= 3528 && prefix4 <= 3589) {
+					return true;
+				}
+			}
 			char c1 = digits.length() > 1 ? digits.charAt(1) : '0';
 			return c1 == '4' || c1 == '7';
 		}
@@ -131,7 +137,13 @@ public class PiiMasker {
 				return true;
 			}
 		}
-		return c0 == '2' && digits.length() >= 4;
+		if (digits.length() >= 4) {
+			int prefix4Tail = Integer.parseInt(digits.substring(0, 4));
+			if (prefix4Tail >= 2221 && prefix4Tail <= 2720) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	static boolean passesLuhn(String digits) {
