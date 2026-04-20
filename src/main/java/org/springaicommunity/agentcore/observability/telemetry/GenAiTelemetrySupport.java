@@ -61,7 +61,20 @@ public final class GenAiTelemetrySupport {
 	/** Lowercase HTTP header names used for AgentCore correlation. */
 	public static final String HTTP_HEADER_AGENTCORE_SESSION_ID = "x-amzn-bedrock-agentcore-session-id";
 
-	public static final String HTTP_HEADER_AMZN_REQUEST_ID = "x-amzn-requestid";
+	/**
+	 * Standard AWS response header for the request id (see AWS docs:
+	 * {@code x-amzn-request-id}). Servlet and Spring {@code getHeader} lookups are
+	 * case-insensitive; this is the canonical spelling.
+	 */
+	public static final String HTTP_HEADER_AMZN_REQUEST_ID = "x-amzn-request-id";
+
+	/**
+	 * Alternate spellings for the same logical header (legacy undashed form, doc-style
+	 * casing). Lookup should try these in order after the primary constant when
+	 * correlating with tools that key on a specific string form.
+	 */
+	public static final String[] HTTP_HEADER_AMZN_REQUEST_ID_ALIASES = { HTTP_HEADER_AMZN_REQUEST_ID,
+			"x-amzn-requestid", "X-Amzn-RequestId" };
 
 	/** Histogram metric name from GenAI client metrics semantic conventions. */
 	public static final String METRIC_GEN_AI_CLIENT_TOKEN_USAGE = "gen_ai.client.token.usage";

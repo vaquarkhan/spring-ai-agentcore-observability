@@ -5,7 +5,7 @@ Spring Boot starter library providing **OpenTelemetry** integration for [Spring 
 ## Features
 
 - **GenAI telemetry** — Spans and metrics aligned with OpenTelemetry GenAI conventions (`gen_ai.*` attributes, token usage histograms).
-- **AgentCore / AWS correlation** — When inbound HTTP headers are present (`x-amzn-bedrock-agentcore-session-id`, `x-amzn-requestid`), values are copied onto spans as `aws.bedrock.agentcore.session_id` and `aws.request_id` (from servlet request, `ServerWebExchange`, or `RequestContextHolder`).
+- **AgentCore / AWS correlation** — When inbound HTTP headers are present (`x-amzn-bedrock-agentcore-session-id`, `x-amzn-request-id` and legacy aliases), values are copied onto spans as `aws.bedrock.agentcore.session_id` and `aws.request_id` (from servlet request, `ServerWebExchange`, or `RequestContextHolder`).
 - **Structured configuration** — `spring.ai.agentcore.observability.*` via `AgentCoreObservabilityProperties`: enable/disable masking globally, toggle categories (email, SSN, PAN, phone), and optional **custom regex** patterns for extra redaction. Prompt/completion capture respects `spring.ai.agentcore.observability.capture-content` and the legacy **`OTEL_GENAI_CAPTURE_CONTENT`** environment variable when the Spring property is unset.
 - **PII-safe export** — `PiiMaskingSpanExporter` wraps the configured OTLP span exporter. PAN-like runs are validated with **Luhn** and **issuer-style prefix** checks before masking; phone patterns cover common US formats (hyphen, dot, parentheses, `+1`).
 - **Error classification** — Span `error.type` is mapped toward OTel-friendly categories where possible (e.g. `rate_limit`, `invalid_request`, `timeout`, `authentication_failure`, `server_error`).

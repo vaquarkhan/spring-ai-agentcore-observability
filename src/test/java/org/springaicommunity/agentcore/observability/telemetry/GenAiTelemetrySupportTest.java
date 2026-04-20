@@ -28,6 +28,7 @@ class GenAiTelemetrySupportTest {
 		assertThat(GenAiTelemetrySupport.PROVIDER_AWS_BEDROCK).isNotBlank();
 		assertThat(GenAiTelemetrySupport.OP_CHAT).isEqualTo("chat");
 		assertThat(GenAiTelemetrySupport.METRIC_GEN_AI_CLIENT_TOKEN_USAGE).contains("gen_ai");
+		assertThat(GenAiTelemetrySupport.HTTP_HEADER_AMZN_REQUEST_ID).isEqualTo("x-amzn-request-id");
 	}
 
 	@Test

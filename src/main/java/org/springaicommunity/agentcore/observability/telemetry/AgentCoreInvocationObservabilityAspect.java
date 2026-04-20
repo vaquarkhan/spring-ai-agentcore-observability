@@ -112,10 +112,20 @@ public class AgentCoreInvocationObservabilityAspect {
 		if (session != null && !session.isEmpty()) {
 			span.setAttribute(GenAiTelemetrySupport.AWS_BEDROCK_AGENTCORE_SESSION_ID, session);
 		}
-		String requestId = firstHeader(joinPoint, GenAiTelemetrySupport.HTTP_HEADER_AMZN_REQUEST_ID);
+		String requestId = firstHeaderMatching(joinPoint, GenAiTelemetrySupport.HTTP_HEADER_AMZN_REQUEST_ID_ALIASES);
 		if (requestId != null && !requestId.isEmpty()) {
 			span.setAttribute(GenAiTelemetrySupport.AWS_REQUEST_ID, requestId);
 		}
+	}
+
+	private static String firstHeaderMatching(ProceedingJoinPoint joinPoint, String... names) {
+		for (String name : names) {
+			String v = firstHeader(joinPoint, name);
+			if (v != null && !v.isEmpty()) {
+				return v;
+			}
+		}
+		return null;
 	}
 
 	private static String firstHeader(ProceedingJoinPoint joinPoint, String name) {

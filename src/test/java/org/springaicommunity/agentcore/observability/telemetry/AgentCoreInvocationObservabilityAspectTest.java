@@ -604,6 +604,20 @@ class AgentCoreInvocationObservabilityAspectTest {
 	}
 
 	@Test
+	void appliesLegacyUndashedAwsRequestIdWhenStandardHeaderAbsent() throws Throwable {
+		HttpServletRequest req = mock(HttpServletRequest.class);
+		when(req.getHeader("x-amzn-request-id")).thenReturn(null);
+		when(req.getHeader("x-amzn-requestid")).thenReturn("rid-legacy");
+		ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);
+		when(pjp.getArgs()).thenReturn(new Object[] { req });
+		when(pjp.proceed()).thenReturn("ok");
+
+		aspect.aroundAgentCoreController(pjp);
+
+		verify(span).setAttribute(GenAiTelemetrySupport.AWS_REQUEST_ID, "rid-legacy");
+	}
+
+	@Test
 	void monoErrorRecordsServerErrorType() throws Throwable {
 		ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);
 		when(pjp.proceed()).thenReturn(Mono.error(new IllegalStateException("b")));
