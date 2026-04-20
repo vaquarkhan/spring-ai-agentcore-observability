@@ -9,6 +9,7 @@ Authoritative content remains on [Spring](https://spring.io/) and [OpenTelemetry
 - **Configuration** — `spring.ai.agentcore.observability` properties for masking and capture; see [genai-observability.md](genai-observability.md).
 - **Runtime artifact** — Use **`spring-ai-agentcore-runtime-starter`** (see [agentcore-runtime.md](agentcore-runtime.md)).
 - **Reactive paths** — `Mono` / `Flux` of `ChatResponse` are instrumented so spans complete when the stream finishes or errors.
+- **Consumers** — Optional `spring-web` / `spring-webflux` on the classpath; custom `PiiMasker` beans override the auto-configured default.
 
 | Document | Purpose |
 |----------|---------|

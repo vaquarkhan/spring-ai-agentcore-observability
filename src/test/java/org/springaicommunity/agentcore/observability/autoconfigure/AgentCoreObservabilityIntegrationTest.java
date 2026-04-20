@@ -54,7 +54,7 @@ class AgentCoreObservabilityIntegrationTest {
 
 	@Test
 	void invocationsEmitsGenAiAttributesAndMasksPiiInExportedSpans() throws Exception {
-		String body = "Hello jane@example.com SSN 123-45-6789 card 4111111111111111 phone 212-555-0199";
+		String body = "Hello jane@example.com SSN 123-45-6789 card 4242-4242-4242-4242 phone 212-555-0199";
 
 		mockMvc.perform(MockMvcRequestBuilders.post("/invocations").contentType(MediaType.TEXT_PLAIN).content(body))
 			.andExpect(MockMvcResultMatchers.status().isOk());
@@ -77,7 +77,7 @@ class AgentCoreObservabilityIntegrationTest {
 		assertThat(promptEventPayload).doesNotContain("jane@example.com");
 		assertThat(promptEventPayload).contains("j***@***.com");
 		assertThat(promptEventPayload).contains("###-##-####");
-		assertThat(promptEventPayload).contains("4111-****-****-1111");
+		assertThat(promptEventPayload).contains("4242-****-****-4242");
 	}
 
 	private static String findEventAttribute(SpanData span, String eventName, String attributeKey) {

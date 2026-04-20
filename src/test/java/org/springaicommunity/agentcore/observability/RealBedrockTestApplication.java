@@ -16,23 +16,21 @@
 
 package org.springaicommunity.agentcore.observability;
 
-import org.springaicommunity.agentcore.observability.sample.SampleBedrockAgentService;
-import org.springaicommunity.agentcore.observability.testsupport.OtelInMemorySpanExporterTestConfig;
+import org.springaicommunity.agentcore.observability.realbedrock.RealBedrockAwsClientsConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Import;
 
 /**
- * Same wide component scan as other observability tests but excludes the synthetic
- * {@link SampleBedrockAgentService} and the shared
- * {@link OtelInMemorySpanExporterTestConfig} (the latter is {@code @Import}ed only by
- * tests to avoid duplicate beans).
+ * Live Bedrock tests need exactly one {@code @AgentCoreInvocation} handler. A second
+ * {@code @ComponentScan} on the same class does not merge with
+ * {@code @SpringBootApplication}'s scan, so we narrow the scan to the real Bedrock agent
+ * package only (excluding the synthetic sample under {@code ...sample}).
+ * {@link org.springaicommunity.agentcore.observability.testsupport.OtelInMemorySpanExporterTestConfig}
+ * is {@code @Import}ed by tests rather than component-scanned.
  */
-@SpringBootApplication(scanBasePackages = "org.springaicommunity.agentcore.observability")
-@ComponentScan(excludeFilters = {
-		@ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = SampleBedrockAgentService.class),
-		@ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = OtelInMemorySpanExporterTestConfig.class) })
+@SpringBootApplication(scanBasePackages = "org.springaicommunity.agentcore.observability.realbedrock")
+@Import(RealBedrockAwsClientsConfiguration.class)
 public class RealBedrockTestApplication {
 
 	public static void main(String[] args) {

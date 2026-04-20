@@ -27,6 +27,7 @@ import org.springaicommunity.agentcore.observability.masking.PiiMaskingSpanExpor
 import org.springaicommunity.agentcore.observability.telemetry.AgentCoreInvocationObservabilityAspect;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
@@ -43,6 +44,7 @@ public class AgentCoreObservabilityAutoConfiguration {
 	private static final String INSTRUMENTATION_SCOPE = "org.springaicommunity.agentcore.observability";
 
 	@Bean
+	@ConditionalOnMissingBean
 	public PiiMasker agentCorePiiMasker(AgentCoreObservabilityProperties properties) {
 		return new PiiMasker(PiiMaskingSettings.from(properties.getMasking()));
 	}
