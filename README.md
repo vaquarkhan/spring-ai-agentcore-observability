@@ -24,6 +24,14 @@ mvn clean verify
 
 This compiles the library, runs all tests (unit + integration), runs **Spring Java Format** validation, and enforces JaCoCo coverage gates (see below).
 
+### Git hooks (optional)
+
+To enforce a `commit-msg` hook that removes stray toolchain footer lines from commit messages, point Git at the tracked hooks directory once per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
 ## Testing and coverage
 
 - **Unit and integration tests** cover auto-configuration, the observability aspect, span masking, PII masking, and HTTP invocation flow (including masked export via an in-memory span exporter).
